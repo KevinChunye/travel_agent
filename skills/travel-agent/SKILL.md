@@ -18,7 +18,9 @@ All tools are subcommands of:
 python -m src.cli <command> [flags]
 ```
 
-Run them from the repository root. Every command prints JSON. When a
+Run them from the repository root — the directory containing `src/` and
+`skills/` (in an OpenClaw deployment this is the agent workspace; if
+`TRAVEL_AGENT_HOME` is set, `cd` there first). Every command prints JSON. When a
 command returns `display_text`, send that text to the user **verbatim** —
 do not recompute, round, or paraphrase prices, times, or fare rules.
 
