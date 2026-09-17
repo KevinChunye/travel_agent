@@ -143,11 +143,15 @@ class DuffelProvider(TravelProvider):
                     )
                 )
 
+        # Display fields describe the OUTBOUND slice; the full journey
+        # (including any return slice) stays in `segments` and the price.
         first_slice = slices[0] if slices else {}
-        first_seg = (first_slice.get("segments") or [{}])[0]
-        last_seg = (first_slice.get("segments") or [{}])[-1]
+        first_slice_segs = first_slice.get("segments") or [{}]
+        first_seg = first_slice_segs[0]
+        last_seg = first_slice_segs[-1]
         departure = _parse_dt(first_seg.get("departing_at"))
         arrival = _parse_dt(last_seg.get("arriving_at"))
+        connections = max(len(first_slice_segs) - 1, 0)
         duration = (
             int((arrival - departure).total_seconds() // 60)
             if departure and arrival
@@ -177,8 +181,8 @@ class DuffelProvider(TravelProvider):
             provider=self.name,
             carrier=owner.get("iata_code", "??"),
             carrier_name=owner.get("name"),
-            origin=segments[0].origin if segments else "?",
-            destination=segments[-1].destination if segments else "?",
+            origin=(first_seg.get("origin") or {}).get("iata_code", "?"),
+            destination=(last_seg.get("destination") or {}).get("iata_code", "?"),
             departure=departure,
             arrival=arrival,
             duration_minutes=duration,
