@@ -183,10 +183,21 @@ class SearchService:
 def format_options(outcome: SearchOutcome, repo: Repository) -> str:
     """Plain-text option list; the messaging channel decides final styling."""
     if not outcome.options:
-        return (
+        lines = [
             "No itineraries matched your requirements. "
-            f"({outcome.filtered_out} result(s) were excluded by your constraints.)"
+            f"({outcome.filtered_out} result(s) were excluded by your constraints:)"
+        ]
+        reason_counts: dict[str, int] = {}
+        for reasons in outcome.rejection_summary.values():
+            for reason in reasons:
+                reason_counts[reason] = reason_counts.get(reason, 0) + 1
+        for reason, n in sorted(reason_counts.items(), key=lambda kv: -kv[1]):
+            lines.append(f"  - {n} offer(s): {reason}")
+        lines.append(
+            "Consider relaxing the constraint above (e.g. widen the time "
+            "window, allow more stops, or raise the price cap)."
         )
+        return "\n".join(lines)
     lines: list[str] = []
     for i, option in enumerate(outcome.options, start=1):
         o = option.ranked.offer

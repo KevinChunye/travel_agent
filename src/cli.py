@@ -139,6 +139,7 @@ def cmd_search(app: App, args: argparse.Namespace) -> None:
             ],
             "total_offers": outcome.total_offers,
             "filtered_out": outcome.filtered_out,
+            "rejection_reasons": outcome.rejection_summary,
             "provider_errors": outcome.provider_errors,
         }
     )
