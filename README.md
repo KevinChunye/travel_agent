@@ -113,7 +113,7 @@ on the `/data` volume.
 **Docker (portable to DigitalOcean later)**:
 
 ```bash
-docker build -t travel-agent .
+docker build -f deploy/Dockerfile -t travel-agent .
 docker run --env-file .env -v travel_data:/data travel-agent \
   python -m src.cli monitor-run
 ```
