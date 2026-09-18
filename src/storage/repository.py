@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from src.models.booking import Booking, BookingIntent, PassengerIdentity, Trip, TripState
+from src.models.booking import Booking, BookingIntent, PassengerIdentity, Trip
 from src.models.monitoring import MonitoringTask
 from src.models.offer import Offer
 from src.models.preferences import SelectionFeedback, UserPreferences

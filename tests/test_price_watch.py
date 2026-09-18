@@ -1,15 +1,11 @@
 """Price watches: adaptive scheduling, observations, budget respect."""
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from src.models.travel_request import DateRange, TravelRequest
-from src.services.price_watch import (
-    FINAL_CUTOFF_DAYS,
-    PriceWatchService,
-    adaptive_interval_days,
-)
+from src.services.price_watch import PriceWatchService, adaptive_interval_days
 from src.services.search_budget import (
     BudgetConfig,
     SearchBudgetManager,

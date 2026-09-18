@@ -38,4 +38,19 @@ for d in /data/.openclaw/workspace/skills /data/.openclaw/skills; do
     echo "skill installed -> $d/travel-agent"
 done
 
+# 6. Keep the agent-reachable workspace copy in sync (used when the agent's
+# exec runs with TRAVEL_AGENT_HOME pointing into the workspace). The live
+# database under data/ is preserved.
+WSCOPY=/data/.openclaw/workspace/travel_agent
+if [ -d "$WSCOPY" ]; then
+    mkdir -p /tmp/ta-db-backup
+    [ -d "$WSCOPY/data" ] && cp -r "$WSCOPY/data" /tmp/ta-db-backup/
+    rm -rf "$WSCOPY"
+    cp -r "$REPO" "$WSCOPY"
+    [ -d /tmp/ta-db-backup/data ] && rm -rf "$WSCOPY/data" \
+        && cp -r /tmp/ta-db-backup/data "$WSCOPY/data"
+    rm -rf /tmp/ta-db-backup
+    echo "workspace copy refreshed -> $WSCOPY (database preserved)"
+fi
+
 echo "== DONE. Restart the agent (Sleep, then send a chat message), then ask it: 'list your skills' =="

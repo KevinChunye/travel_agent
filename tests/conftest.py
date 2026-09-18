@@ -59,10 +59,10 @@ def booking_service(repo, provider) -> BookingService:
 def traveler(repo) -> PassengerIdentity:
     t = PassengerIdentity(
         user_id="user1",
-        given_name="Kevin",
-        family_name="Wang",
-        born_on=date(1995, 5, 1),
-        email="kevin@example.com",
+        given_name="Alex",
+        family_name="Rivera",
+        born_on=date(1990, 1, 1),
+        email="alex@example.com",
     )
     repo.save_traveler(t)
     return t

@@ -1,11 +1,8 @@
 """Booking-link handoff and the revised (no-transaction) state machine."""
 
-from datetime import date
-
 import pytest
 
 from src.models.booking import Trip, TripState
-from src.models.travel_request import DateRange, TravelRequest
 from src.services import state as sm
 from src.services.handoff import PAYMENT_DISCLAIMER, HandoffService
 from src.services.monitoring import MonitoringService

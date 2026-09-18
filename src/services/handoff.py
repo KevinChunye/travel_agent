@@ -8,7 +8,6 @@ which creates a confirmed BookedTrip the agent can manage and monitor.
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel

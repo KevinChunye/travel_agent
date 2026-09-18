@@ -1,6 +1,6 @@
-# Portable image: runs on Maritime today, DigitalOcean (or any Docker host)
-# later. The deterministic core is plain Python; OpenClaw mounts/copies the
-# skill from skills/travel-agent.
+# Portable image for the deterministic core (search, watches, charts,
+# dashboard). OpenClaw/Maritime run the conversational layer separately.
+# Build:  docker build -f deploy/Dockerfile -t travel-agent .
 
 FROM python:3.11-slim
 
@@ -10,16 +10,16 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir "pydantic>=2.5" "httpx>=0.27"
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src ./src
+COPY bin ./bin
 COPY skills ./skills
 
-# Persist SQLite outside the container filesystem.
 VOLUME ["/data"]
 
-# Default: process due monitoring tasks (what a Maritime scheduled trigger
-# or cron invokes). Override the command for other tools, e.g.:
-#   docker run travel-agent python -m src.cli status --trip trip_abc
+# Default: process due reminders and price watches (what a scheduler runs).
+# Override for other commands, e.g.:
+#   docker run travel-agent python -m src.cli dashboard --port 8090
 CMD ["python", "-m", "src.cli", "monitor-run"]

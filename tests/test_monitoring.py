@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from src.channels.base import MessagingChannel
 from src.models.booking import Booking, BookingStatus

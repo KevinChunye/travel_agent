@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from src.models.booking import Trip, TripState
 from src.models.offer import Offer
-from src.models.preferences import SelectionFeedback, UserPreferences
+from src.models.preferences import SelectionFeedback
 from src.models.travel_request import PreferenceWeights
 from src.providers.base import ProviderError, TravelProvider
 from src.ranking.scorer import (

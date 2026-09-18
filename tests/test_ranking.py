@@ -1,11 +1,6 @@
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta
 
-from src.models.travel_request import (
-    HardConstraints,
-    PreferenceWeights,
-    TimeWindow,
-    TravelRequest,
-)
+from src.models.travel_request import PreferenceWeights, TimeWindow
 from src.ranking.scorer import (
     apply_hard_constraints,
     rank_offers,

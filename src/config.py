@@ -6,7 +6,7 @@ See .env.example for the full list.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -20,8 +20,6 @@ class Settings:
     serpapi_reserve: int = 25
     search_cache_ttl_minutes: int = 360
     dashboard_port: int = 8090
-    whatsapp_access_token: str | None = None
-    whatsapp_phone_number_id: str | None = None
     price_buffer_pct: float = 0.0  # tolerated price drift vs approved total
 
     @classmethod
@@ -43,8 +41,6 @@ class Settings:
                 os.environ.get("SEARCH_CACHE_TTL_MINUTES", "360")
             ),
             dashboard_port=int(os.environ.get("DASHBOARD_PORT", "8090")),
-            whatsapp_access_token=os.environ.get("WHATSAPP_ACCESS_TOKEN"),
-            whatsapp_phone_number_id=os.environ.get("WHATSAPP_PHONE_NUMBER_ID"),
             price_buffer_pct=float(os.environ.get("PRICE_BUFFER_PCT", "0")),
         )
 

@@ -16,7 +16,7 @@ PAYMENT = PaymentToken(provider="mock", token="balance", kind="balance")
 def drive_to_intent(repo, search_service, booking_service, trip, traveler):
     """Search, pick option 1, reprice -> unconfirmed intent."""
     search_service.search(trip)
-    offer = search_service.select_option(trip, "1")
+    search_service.select_option(trip, "1")
     intent, refreshed = booking_service.reprice_and_create_intent(trip, traveler)
     return intent, refreshed
 
