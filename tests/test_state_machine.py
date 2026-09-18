@@ -17,10 +17,9 @@ def test_happy_path_transitions(repo, draft_trip):
         TripState.SEARCHING,
         TripState.OPTIONS_READY,
         TripState.OPTION_SELECTED,
-        TripState.REPRICING,
-        TripState.AWAITING_BOOKING_CONFIRMATION,
-        TripState.BOOKING,
-        TripState.CONFIRMED,
+        TripState.BOOKING_LINK_READY,
+        TripState.AWAITING_USER_BOOKING,
+        TripState.TRIP_CONFIRMED,
         TripState.MONITORING,
         TripState.COMPLETED,
     ]

@@ -2,14 +2,13 @@
 
 The OpenClaw skill invokes these commands; the LLM handles language and
 orchestration while this CLI (and the services beneath it) owns state,
-constraints, ranking, and booking authorization. Every command prints a
-single JSON object on stdout.
+constraints, ranking, persistence, and the SerpAPI search budget. Every
+command prints a single JSON object on stdout (and mirrors it to
+``data/last_response.json`` for exec environments that swallow stdout).
 
-Booking safety: ``confirm`` requires the literal flag ``--user-confirmed yes``
-which the skill may only pass after the user explicitly approved the
-displayed price — and even then, ``book`` re-validates price/itinerary/
-passenger against the persisted intent, so a prompt-injected or confused
-model cannot buy anything the user did not approve.
+Payment safety: this agent never purchases tickets and never collects
+card or passport data. ``link`` hands the user a Google Flights booking
+URL; the user buys on the airline site and reports back with ``booked``.
 """
 
 from __future__ import annotations
@@ -24,15 +23,10 @@ from typing import Any
 from pydantic import ValidationError
 
 from src.config import Settings, build_providers
-from src.models.booking import PassengerIdentity, PaymentToken, Trip, TripState
+from src.models.booking import PassengerIdentity, Trip, TripState
 from src.models.preferences import UserPreferences
 from src.models.travel_request import TravelRequest
 from src.services import state as sm
-from src.services.booking import (
-    BookingAuthorizationError,
-    BookingService,
-    format_confirmation_prompt,
-)
 from src.services.handoff import HandoffService
 from src.services.monitoring import MonitoringService
 from src.services.price_watch import PriceWatchService
@@ -83,7 +77,6 @@ class App:
             self.settings, repo=self.repo, budget=self.budget
         )
         self.search = SearchService(self.providers, self.repo)
-        self.booking = BookingService(self.providers, self.repo)
         self.monitoring = MonitoringService(self.providers, self.repo)
         self.watches = PriceWatchService(self.providers, self.repo, self.budget)
         self.handoff = HandoffService(self.repo)
@@ -202,103 +195,6 @@ def cmd_select(app: App, args: argparse.Namespace) -> None:
             "selected_offer_id": offer.id,
         }
     )
-
-
-def _passenger_for(app: App, user_id: str, traveler_id: str | None) -> PassengerIdentity:
-    travelers = app.repo.get_travelers(user_id)
-    if traveler_id:
-        for t in travelers:
-            if t.id == traveler_id:
-                return t
-        _fail(f"Unknown traveler {traveler_id}")
-    if not travelers:
-        _fail(
-            "No traveler profile on file. Add one with the traveler-add "
-            "command before booking."
-        )
-    return travelers[0]
-
-
-def cmd_reprice(app: App, args: argparse.Namespace) -> None:
-    trip = app._get_trip(args.trip)
-    passenger = _passenger_for(app, trip.user_id, args.traveler)
-    try:
-        intent, offer = app.booking.reprice_and_create_intent(
-            trip, passenger, price_buffer_pct=app.settings.price_buffer_pct
-        )
-    except (BookingAuthorizationError, sm.InvalidTransition) as exc:
-        _fail(str(exc), state=trip.state.value)
-    except Exception as exc:  # OfferNotAvailableError et al.
-        _fail(str(exc), state=app._get_trip(args.trip).state.value)
-    _out(
-        {
-            "ok": True,
-            "trip_id": trip.id,
-            "state": trip.state.value,
-            "intent_id": intent.id,
-            "total_price": str(offer.total_price),
-            "currency": offer.currency,
-            "display_text": format_confirmation_prompt(intent, offer, passenger),
-        }
-    )
-
-
-def cmd_confirm(app: App, args: argparse.Namespace) -> None:
-    trip = app._get_trip(args.trip)
-    if args.user_confirmed != "yes":
-        _fail("Refusing: --user-confirmed must be exactly 'yes'")
-    try:
-        intent = app.booking.confirm_intent(args.intent, trip.user_id)
-    except BookingAuthorizationError as exc:
-        _fail(str(exc))
-    _out(
-        {
-            "ok": True,
-            "trip_id": trip.id,
-            "intent_id": intent.id,
-            "confirmed_at": intent.confirmed_at.isoformat(),
-        }
-    )
-
-
-def cmd_book(app: App, args: argparse.Namespace) -> None:
-    trip = app._get_trip(args.trip)
-    passenger = _passenger_for(app, trip.user_id, args.traveler)
-    payment = PaymentToken(
-        provider="duffel" if "duffel" in app.settings.providers else "mock",
-        token=args.payment_token or "balance",
-        kind=args.payment_kind,
-    )
-    try:
-        decision = app.booking.execute_booking(trip, args.intent, passenger, payment)
-    except (BookingAuthorizationError, sm.InvalidTransition) as exc:
-        _fail(str(exc), state=trip.state.value)
-    payload: dict[str, Any] = {
-        "ok": decision.booked,
-        "trip_id": trip.id,
-        "state": trip.state.value,
-        "booked": decision.booked,
-    }
-    if decision.booked:
-        booking = app.repo.get_booking(decision.booking_id)
-        app.monitoring.create_tasks_for_booking(booking)
-        sm.transition(app.repo, trip, TripState.MONITORING)
-        payload.update(
-            {
-                "state": trip.state.value,
-                "booking_id": decision.booking_id,
-                "booking_reference": decision.booking_reference,
-            }
-        )
-    else:
-        payload.update(
-            {
-                "rejection": decision.rejection.value if decision.rejection else None,
-                "requires_reconfirmation": decision.requires_reconfirmation,
-                "detail": decision.detail,
-            }
-        )
-    _out(payload)
 
 
 def cmd_status(app: App, args: argparse.Namespace) -> None:
@@ -560,20 +456,6 @@ def build_parser() -> argparse.ArgumentParser:
     add("select", cmd_select,
         ("--trip", {"required": True}),
         ("--option", {"required": True, "help": "1-based index or offer id"}))
-    add("reprice", cmd_reprice,
-        ("--trip", {"required": True}),
-        ("--traveler", {"default": None}))
-    add("confirm", cmd_confirm,
-        ("--trip", {"required": True}),
-        ("--intent", {"required": True}),
-        ("--user-confirmed", {"required": True,
-                              "help": "must be literally 'yes'"}))
-    add("book", cmd_book,
-        ("--trip", {"required": True}),
-        ("--intent", {"required": True}),
-        ("--traveler", {"default": None}),
-        ("--payment-kind", {"default": "balance"}),
-        ("--payment-token", {"default": None}))
     add("status", cmd_status, ("--trip", {"required": True}))
     add("cancel-trip", cmd_cancel_trip, ("--trip", {"required": True}))
     add("traveler-add", cmd_traveler_add,

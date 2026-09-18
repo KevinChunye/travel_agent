@@ -5,11 +5,10 @@ from decimal import Decimal
 
 import pytest
 
-from src.models.booking import PassengerIdentity, Trip, TripState
+from src.models.booking import Trip, TripState
 from src.models.offer import BaggageAllowance, Offer, Segment
 from src.models.travel_request import DateRange, TimeWindow, TransportMode, TravelRequest
 from src.providers.mock import MockFlightProvider
-from src.services.booking import BookingService
 from src.services.search import SearchService
 from src.storage.repository import SQLiteRepository
 
@@ -48,24 +47,6 @@ def trip(repo, request_bos_jfk) -> Trip:
 @pytest.fixture
 def search_service(repo, provider) -> SearchService:
     return SearchService([provider], repo)
-
-
-@pytest.fixture
-def booking_service(repo, provider) -> BookingService:
-    return BookingService([provider], repo, clock=lambda: NOW)
-
-
-@pytest.fixture
-def traveler(repo) -> PassengerIdentity:
-    t = PassengerIdentity(
-        user_id="user1",
-        given_name="Alex",
-        family_name="Rivera",
-        born_on=date(1990, 1, 1),
-        email="alex@example.com",
-    )
-    repo.save_traveler(t)
-    return t
 
 
 def make_offer(

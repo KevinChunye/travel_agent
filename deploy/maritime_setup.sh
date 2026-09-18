@@ -7,7 +7,34 @@
 set -e
 
 REPO=/data/travel_agent
+WSCOPY=/data/.openclaw/workspace/travel_agent
 echo "== travel-agent setup =="
+
+# Write protection: the agent operates this tool, it never edits it.
+# Code and skill files are made immutable (chattr +i survives even a
+# root-level agent's write tools; chmod a-w is the fallback). data/,
+# .git/ and __pycache__/ stay writable. This script is the only path
+# that unlocks, updates via git, and re-locks.
+lock_tree() {
+    [ -d "$1" ] || return 0
+    find "$1" \( -name data -o -name .git -o -name __pycache__ \) -prune \
+        -o -type f -print | while read -r f; do
+        chattr +i "$f" 2>/dev/null || chmod a-w "$f" 2>/dev/null || true
+    done
+}
+unlock_tree() {
+    [ -d "$1" ] || return 0
+    find "$1" \( -name data -o -name .git \) -prune -o -type f \
+        -exec chattr -i {} \; 2>/dev/null
+    chmod -R u+w "$1" 2>/dev/null || true
+}
+
+# 0. Unlock everything this script needs to update or replace.
+for p in "$REPO" "$WSCOPY" \
+         /data/.openclaw/workspace/skills/travel-agent \
+         /data/.openclaw/skills/travel-agent; do
+    unlock_tree "$p"
+done
 
 # 1. Code: clone or update.
 if [ -d "$REPO/.git" ]; then
@@ -41,7 +68,6 @@ done
 # 6. Keep the agent-reachable workspace copy in sync (used when the agent's
 # exec runs with TRAVEL_AGENT_HOME pointing into the workspace). The live
 # database under data/ is preserved.
-WSCOPY=/data/.openclaw/workspace/travel_agent
 if [ -d "$WSCOPY" ]; then
     mkdir -p /tmp/ta-db-backup
     [ -d "$WSCOPY/data" ] && cp -r "$WSCOPY/data" /tmp/ta-db-backup/
@@ -52,5 +78,12 @@ if [ -d "$WSCOPY" ]; then
     rm -rf /tmp/ta-db-backup
     echo "workspace copy refreshed -> $WSCOPY (database preserved)"
 fi
+
+# 7. Re-lock code and skill files so the agent cannot modify them.
+for p in "$REPO" "$WSCOPY" \
+         /data/.openclaw/workspace/skills/travel-agent \
+         /data/.openclaw/skills/travel-agent; do
+    lock_tree "$p" && [ -d "$p" ] && echo "locked (read-only) -> $p"
+done
 
 echo "== DONE. Restart the agent (Sleep, then send a chat message), then ask it: 'list your skills' =="

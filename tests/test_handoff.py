@@ -100,11 +100,14 @@ class TestRevisedStateMachine:
         sm.transition(repo, trip, TripState.TRIP_CONFIRMED)
 
     def test_legacy_transactional_states_not_reachable_from_active_flow(self):
-        # The only bridge into the legacy flow is OPTION_SELECTED->REPRICING
-        # (used by the isolated Duffel BookingService). No active-flow state
-        # reaches BOOKING/PAYMENT states.
+        # No active-flow state may transition into the legacy BOOKING /
+        # PAYMENT states: the agent never purchases anything.
         active = {
+            TripState.DRAFT, TripState.NEEDS_INFORMATION,
+            TripState.READY_TO_SEARCH, TripState.SEARCHING,
+            TripState.OPTIONS_READY, TripState.OPTION_SELECTED,
             TripState.BOOKING_LINK_READY, TripState.AWAITING_USER_BOOKING,
+            TripState.BOOKING_LINK_UNAVAILABLE,
             TripState.TRIP_CONFIRMED, TripState.PRICE_WATCH_ACTIVE,
             TripState.TRACKING_PAUSED, TripState.NO_RESULTS,
             TripState.SEARCH_FAILED, TripState.SEARCH_QUOTA_REACHED,

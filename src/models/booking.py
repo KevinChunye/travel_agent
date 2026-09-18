@@ -50,9 +50,9 @@ class TripState(str, Enum):
     PRICE_CHANGED = "PRICE_CHANGED"
     TRIP_CHANGED = "TRIP_CHANGED"
     CANCELLED = "CANCELLED"
-    # LEGACY transactional states: kept so historical data and the
-    # isolated Duffel booking code keep working; NOT part of the active
-    # workflow (the agent no longer performs financial transactions).
+    # LEGACY transactional states: kept only so historical trip rows
+    # remain readable; NOT reachable from the active workflow (the agent
+    # never performs financial transactions — test-asserted).
     REPRICING = "REPRICING"
     AWAITING_BOOKING_CONFIRMATION = "AWAITING_BOOKING_CONFIRMATION"
     BOOKING = "BOOKING"
@@ -109,7 +109,7 @@ class PaymentToken(BaseModel):
     """Reference to a provider-side payment method. Never a card number."""
 
     provider: str
-    token: str  # e.g. Duffel balance / card token id
+    token: str  # provider-side token id, never a card number
     kind: str = "balance"
 
 

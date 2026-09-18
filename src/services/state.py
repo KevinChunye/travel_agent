@@ -46,7 +46,6 @@ ALLOWED_TRANSITIONS: dict[TripState, set[TripState]] = {
         S.BOOKING_LINK_UNAVAILABLE,
         S.PRICE_WATCH_ACTIVE,
         S.OPTIONS_READY,
-        S.REPRICING,  # legacy path only
         S.CANCELLED,
     },
     S.BOOKING_LINK_READY: {
@@ -88,9 +87,9 @@ ALLOWED_TRANSITIONS: dict[TripState, set[TripState]] = {
                       S.SEARCHING, S.CANCELLED},
     S.TRIP_CHANGED: {S.MONITORING, S.CANCELLED, S.COMPLETED},
     S.CANCELLED: set(),
-    # ---- LEGACY transactional flow (isolated; not reachable from the
-    # active link-handoff workflow except via OPTION_SELECTED->REPRICING,
-    # which only the legacy BookingService uses) -------------------------
+    # ---- LEGACY transactional flow: no active-flow state transitions
+    # into it (test-asserted); kept only so historical trip rows in these
+    # states remain loadable. The agent never books or takes payment. ----
     S.REPRICING: {
         S.AWAITING_BOOKING_CONFIRMATION,
         S.PRICE_CHANGED,

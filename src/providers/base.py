@@ -1,8 +1,11 @@
 """Abstract transportation-provider interface.
 
-Every provider (Duffel for flights, later Trainline/Distribusion for rail
-and bus) implements this interface and returns only normalized models.
-Provider-specific payloads must never leak past an adapter.
+Every provider (Google Flights via SerpAPI for live search, mock for
+offline development) implements this interface and returns only
+normalized models. Provider-specific payloads must never leak past an
+adapter. The transactional methods (book/cancel) exist on the interface
+for completeness; the active workflow is search-only and the live
+provider raises ``ProviderNotConfiguredError`` for them.
 """
 
 from __future__ import annotations
@@ -77,7 +80,7 @@ class StatusResult(BaseModel):
 class TravelProvider(ABC):
     """Contract for all transportation providers."""
 
-    #: Unique provider name, e.g. "duffel", "mock", "trainline".
+    #: Unique provider name, e.g. "google_flights", "mock".
     name: str = "abstract"
     #: Transportation modes this provider can search.
     modes: tuple[TransportMode, ...] = ()
