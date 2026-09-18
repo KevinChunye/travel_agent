@@ -32,8 +32,11 @@ from src.services.booking import (
     BookingService,
     format_confirmation_prompt,
 )
+from src.services.handoff import HandoffService
 from src.services.monitoring import MonitoringService
+from src.services.price_watch import PriceWatchService
 from src.services.search import SearchService, format_options
+from src.services.search_budget import BudgetConfig, SearchBudgetManager
 from src.storage.repository import SQLiteRepository
 
 
@@ -56,10 +59,21 @@ class App:
     def __init__(self) -> None:
         self.settings = Settings.from_env()
         self.repo = SQLiteRepository(self.settings.database_path)
-        self.providers = build_providers(self.settings)
+        self.budget = SearchBudgetManager(
+            self.repo,
+            BudgetConfig(
+                monthly_limit=self.settings.serpapi_monthly_limit,
+                reserve=self.settings.serpapi_reserve,
+            ),
+        )
+        self.providers = build_providers(
+            self.settings, repo=self.repo, budget=self.budget
+        )
         self.search = SearchService(self.providers, self.repo)
         self.booking = BookingService(self.providers, self.repo)
         self.monitoring = MonitoringService(self.providers, self.repo)
+        self.watches = PriceWatchService(self.providers, self.repo, self.budget)
+        self.handoff = HandoffService(self.repo)
 
     def _get_trip(self, trip_id: str) -> Trip:
         trip = self.repo.get_trip(trip_id)
@@ -334,13 +348,179 @@ def cmd_prefs_set(app: App, args: argparse.Namespace) -> None:
 
 
 def cmd_monitor_run(app: App, args: argparse.Namespace) -> None:
-    changes = app.monitoring.run_due(datetime.now(timezone.utc))
+    now = datetime.now(timezone.utc)
+    changes = app.monitoring.run_due(now)
+    notifications = app.watches.run_due(now)
     _out(
         {
             "ok": True,
             "changes": [c.model_dump(mode="json") for c in changes],
+            "watch_notifications": notifications,
         }
     )
+
+
+# -- link handoff / external booking ----------------------------------------
+
+def cmd_link(app: App, args: argparse.Namespace) -> None:
+    trip = app._get_trip(args.trip)
+    try:
+        result = app.handoff.booking_link(trip)
+    except (ValueError, sm.InvalidTransition) as exc:
+        _fail(str(exc), state=trip.state.value)
+    _out({"ok": True, **result.model_dump(mode="json")})
+
+
+def cmd_booked(app: App, args: argparse.Namespace) -> None:
+    trip = app._get_trip(args.trip)
+    details = _load_json_arg(args.details) if args.details else {}
+    try:
+        booked = app.handoff.mark_booked(trip, details)
+    except sm.InvalidTransition as exc:
+        _fail(str(exc), state=trip.state.value)
+    app.monitoring.create_tasks_for_trip(booked)
+    _out(
+        {
+            "ok": True,
+            "trip_id": trip.id,
+            "state": trip.state.value,
+            "booked_trip": booked.model_dump(mode="json"),
+        }
+    )
+
+
+# -- price watches -----------------------------------------------------------
+
+def cmd_track(app: App, args: argparse.Namespace) -> None:
+    trip = app._get_trip(args.trip)
+    # Initial price from the named presented option, else the cheapest
+    # stored offer (no selection flow, no API call).
+    initial = None
+    offer = None
+    if args.option and args.option.isdigit():
+        idx = int(args.option) - 1
+        if 0 <= idx < len(trip.presented_offer_ids):
+            offer = app.repo.get_offer(trip.presented_offer_ids[idx])
+    if offer is None:
+        offers = app.repo.get_offers_for_trip(trip.id)
+        offer = min(offers, key=lambda o: o.total_price) if offers else None
+    if offer is not None:
+        initial = float(offer.total_price)
+    watch = app.watches.create_watch(
+        trip.user_id,
+        trip.request,
+        trip_id=trip.id,
+        target_price=args.target,
+        initial_price=initial,
+    )
+    if trip.state in (TripState.OPTIONS_READY, TripState.OPTION_SELECTED,
+                      TripState.AWAITING_USER_BOOKING):
+        sm.transition(app.repo, trip, TripState.PRICE_WATCH_ACTIVE)
+    _out(
+        {
+            "ok": True,
+            "watch_id": watch.id,
+            "trip_state": trip.state.value,
+            "initial_price": watch.initial_price,
+            "target_price": watch.target_price,
+            "next_check_at": watch.next_check_at.isoformat()
+            if watch.next_check_at else None,
+        }
+    )
+
+
+def cmd_untrack(app: App, args: argparse.Namespace) -> None:
+    watch = (
+        app.repo.get_watch(args.watch)
+        or app.watches.find_watch(args.user, args.watch)
+        if args.user
+        else app.repo.get_watch(args.watch)
+    )
+    if watch is None:
+        _fail(f"No matching active watch for {args.watch!r}")
+    app.watches.stop_watch(watch.id)
+    _out({"ok": True, "watch_id": watch.id, "active": False})
+
+
+def cmd_watches(app: App, args: argparse.Namespace) -> None:
+    watches = app.repo.list_watches(args.user, active_only=not args.all)
+    _out(
+        {
+            "ok": True,
+            "watches": [
+                {
+                    "id": w.id,
+                    "route": f"{w.origin}->{w.destination}",
+                    "outbound": w.request.outbound_date.start.isoformat()
+                    if w.request.outbound_date else None,
+                    "latest_price": w.latest_price,
+                    "lowest_price": w.lowest_price,
+                    "initial_price": w.initial_price,
+                    "target_price": w.target_price,
+                    "active": w.active,
+                    "next_check_at": w.next_check_at.isoformat()
+                    if w.next_check_at else None,
+                }
+                for w in watches
+            ],
+        }
+    )
+
+
+def cmd_trips(app: App, args: argparse.Namespace) -> None:
+    trips = app.repo.list_booked_trips(args.user)
+    _out(
+        {
+            "ok": True,
+            "trips": [t.model_dump(mode="json") for t in trips],
+        }
+    )
+
+
+def cmd_usage(app: App, args: argparse.Namespace) -> None:
+    _out({"ok": True, "usage": app.budget.get_usage().model_dump(mode="json")})
+
+
+def cmd_plan(app: App, args: argparse.Namespace) -> None:
+    trip = app._get_trip(args.trip)
+    plan = app.budget.estimate_search_cost(
+        trip.request,
+        flex_outbound_days=args.flex_out,
+        flex_return_days=args.flex_return,
+    )
+    _out({"ok": True, "plan": plan.model_dump(mode="json")})
+
+
+def cmd_chart(app: App, args: argparse.Namespace) -> None:
+    from src.services.charts import render_price_chart
+
+    watch = app.repo.get_watch(args.watch) if args.watch else None
+    if watch is None and args.user and args.route:
+        watch = app.watches.find_watch(args.user, args.route)
+    if watch is None and args.user:
+        active = app.repo.list_watches(args.user, active_only=True)
+        watch = active[0] if active else None
+    if watch is None:
+        _fail("No matching price watch found")
+    observations = app.repo.observations_for_watch(watch.id)
+    if not observations:
+        _fail("No price observations recorded yet for this watch")
+    out = args.out or f"data/charts/{watch.id}.png"
+    path = render_price_chart(watch, observations, out)
+    _out(
+        {
+            "ok": True,
+            "watch_id": watch.id,
+            "chart_path": path,
+            "observations": len(observations),
+        }
+    )
+
+
+def cmd_dashboard(app: App, args: argparse.Namespace) -> None:
+    from src.services.dashboard import serve
+
+    serve(app.repo, app.budget, port=args.port)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -391,6 +571,36 @@ def build_parser() -> argparse.ArgumentParser:
         ("--user", {"required": True}),
         ("--json", {"required": True}))
     add("monitor-run", cmd_monitor_run)
+    # Link-handoff flow (no in-agent payment)
+    add("link", cmd_link, ("--trip", {"required": True}))
+    add("booked", cmd_booked,
+        ("--trip", {"required": True}),
+        ("--details", {"default": None,
+                       "help": "JSON: confirmation_code, flight_number, ..."}))
+    # Price watches / budget / charts / dashboard
+    add("track", cmd_track,
+        ("--trip", {"required": True}),
+        ("--option", {"default": None, "help": "presented option number"}),
+        ("--target", {"type": float, "default": None}))
+    add("untrack", cmd_untrack,
+        ("--watch", {"required": True, "help": "watch id or airport code"}),
+        ("--user", {"default": None}))
+    add("watches", cmd_watches,
+        ("--user", {"required": True}),
+        ("--all", {"action": "store_true"}))
+    add("trips", cmd_trips, ("--user", {"required": True}))
+    add("usage", cmd_usage)
+    add("plan", cmd_plan,
+        ("--trip", {"required": True}),
+        ("--flex-out", {"type": int, "default": 0}),
+        ("--flex-return", {"type": int, "default": 0}))
+    add("chart", cmd_chart,
+        ("--watch", {"default": None}),
+        ("--user", {"default": None}),
+        ("--route", {"default": None, "help": "airport code, e.g. LAX"}),
+        ("--out", {"default": None}))
+    add("dashboard", cmd_dashboard,
+        ("--port", {"type": int, "default": 8090}))
     return p
 
 

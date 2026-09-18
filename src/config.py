@@ -16,6 +16,10 @@ class Settings:
     default_currency: str = "USD"
     duffel_api_key: str | None = None
     serpapi_api_key: str | None = None
+    serpapi_monthly_limit: int = 250
+    serpapi_reserve: int = 25
+    search_cache_ttl_minutes: int = 360
+    dashboard_port: int = 8090
     whatsapp_access_token: str | None = None
     whatsapp_phone_number_id: str | None = None
     price_buffer_pct: float = 0.0  # tolerated price drift vs approved total
@@ -33,24 +37,43 @@ class Settings:
             default_currency=os.environ.get("DEFAULT_CURRENCY", "USD"),
             duffel_api_key=os.environ.get("DUFFEL_API_KEY"),
             serpapi_api_key=os.environ.get("SERPAPI_API_KEY"),
+            serpapi_monthly_limit=int(os.environ.get("SERPAPI_MONTHLY_LIMIT", "250")),
+            serpapi_reserve=int(os.environ.get("SERPAPI_RESERVE", "25")),
+            search_cache_ttl_minutes=int(
+                os.environ.get("SEARCH_CACHE_TTL_MINUTES", "360")
+            ),
+            dashboard_port=int(os.environ.get("DASHBOARD_PORT", "8090")),
             whatsapp_access_token=os.environ.get("WHATSAPP_ACCESS_TOKEN"),
             whatsapp_phone_number_id=os.environ.get("WHATSAPP_PHONE_NUMBER_ID"),
             price_buffer_pct=float(os.environ.get("PRICE_BUFFER_PCT", "0")),
         )
 
 
-def build_providers(settings: Settings):
-    """Instantiate the configured provider adapters."""
+def build_providers(settings: Settings, repo=None, budget=None):
+    """Instantiate the configured provider adapters.
+
+    ``repo``/``budget`` wire the Google Flights provider into the
+    persistent cache and the SerpAPI search-budget manager.
+    """
     from src.providers.distribusion import DistribusionProvider
     from src.providers.duffel import DuffelProvider
+    from src.providers.google_flights import GoogleFlightsProvider
     from src.providers.mock import MockFlightProvider
-    from src.providers.serpapi import SerpApiFlightsProvider
     from src.providers.trainline import TrainlineProvider
+
+    def _google_flights():
+        return GoogleFlightsProvider(
+            api_key=settings.serpapi_api_key,
+            repo=repo,
+            budget=budget,
+            cache_ttl_minutes=settings.search_cache_ttl_minutes,
+        )
 
     registry = {
         "mock": lambda: MockFlightProvider(),
         "duffel": lambda: DuffelProvider(api_key=settings.duffel_api_key),
-        "serpapi": lambda: SerpApiFlightsProvider(api_key=settings.serpapi_api_key),
+        "google_flights": _google_flights,
+        "serpapi": _google_flights,  # legacy name
         "trainline": lambda: TrainlineProvider(),
         "distribusion": lambda: DistribusionProvider(),
     }

@@ -81,6 +81,41 @@ class MonitoringService:
             self._repo.save_monitoring_task(t)
         return tasks
 
+    def create_tasks_for_trip(self, trip) -> list[MonitoringTask]:
+        """Reminders for an externally-booked trip (BookedTrip).
+
+        No provider order exists, so there are no status checks — just
+        departure and check-in reminders derived from the saved times.
+        """
+        if trip.departure is None:
+            return []
+        dep = trip.departure
+        if dep.tzinfo is None:
+            dep = dep.replace(tzinfo=timezone.utc)
+        tasks = [
+            MonitoringTask(
+                booking_id=trip.id,
+                user_id=trip.user_id,
+                kind=MonitoringTaskKind.DEPARTURE_REMINDER,
+                due_at=dep - timedelta(hours=24),
+            ),
+            MonitoringTask(
+                booking_id=trip.id,
+                user_id=trip.user_id,
+                kind=MonitoringTaskKind.CHECK_IN_REMINDER,
+                due_at=dep - timedelta(hours=24),
+            ),
+            MonitoringTask(
+                booking_id=trip.id,
+                user_id=trip.user_id,
+                kind=MonitoringTaskKind.DEPARTURE_REMINDER,
+                due_at=dep - timedelta(hours=3),
+            ),
+        ]
+        for t in tasks:
+            self._repo.save_monitoring_task(t)
+        return tasks
+
     # -- execution ------------------------------------------------------------
 
     def run_due(self, now: Optional[datetime] = None) -> list[TravelChange]:
@@ -89,9 +124,30 @@ class MonitoringService:
         changes: list[TravelChange] = []
         for task in self._repo.due_monitoring_tasks(now):
             booking = self._repo.get_booking(task.booking_id)
-            if booking is None or booking.status in (
-                BookingStatus.CANCELLED,
-            ):
+            if booking is None:
+                # Externally-booked trip (BookedTrip): reminders only.
+                trip = self._repo.get_booked_trip(task.booking_id)
+                if trip is None or trip.departure is None:
+                    task.active = False
+                    self._repo.save_monitoring_task(task)
+                    continue
+                if task.kind != MonitoringTaskKind.STATUS_CHECK:
+                    ref = trip.confirmation_code or trip.flight_number or trip.id
+                    self._notify(
+                        task.user_id,
+                        f"Reminder: {trip.airline or ''} {ref} "
+                        f"{trip.origin}→{trip.destination} departs "
+                        f"{trip.departure:%a %b %d at %H:%M}."
+                        + (
+                            " Check-in should be open now."
+                            if task.kind == MonitoringTaskKind.CHECK_IN_REMINDER
+                            else ""
+                        ),
+                    )
+                task.active = False
+                self._repo.save_monitoring_task(task)
+                continue
+            if booking.status in (BookingStatus.CANCELLED,):
                 task.active = False
                 self._repo.save_monitoring_task(task)
                 continue

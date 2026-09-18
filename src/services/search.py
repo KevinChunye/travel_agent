@@ -9,6 +9,7 @@ options to present. Also handles conversational refinements ("cheaper",
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 from typing import Optional
 
@@ -26,6 +27,7 @@ from src.ranking.scorer import (
     select_presentation,
 )
 from src.services import state as sm
+from src.services.search_budget import SearchQuotaExceededError
 from src.storage.repository import Repository
 
 logger = logging.getLogger(__name__)
@@ -36,6 +38,7 @@ class SearchOutcome(BaseModel):
     options: list[PresentedOption]
     total_offers: int
     filtered_out: int
+    state: str = ""
     provider_errors: dict[str, str] = Field(default_factory=dict)
     rejection_summary: dict[str, list[str]] = Field(default_factory=dict)
 
@@ -57,27 +60,60 @@ class SearchService:
 
     # -- search -------------------------------------------------------------
 
-    def search(self, trip: Trip, now: Optional[datetime] = None) -> SearchOutcome:
+    def search(
+        self,
+        trip: Trip,
+        now: Optional[datetime] = None,
+        *,
+        force_refresh: bool = False,
+    ) -> SearchOutcome:
         if trip.state in (TripState.READY_TO_SEARCH, TripState.OPTIONS_READY,
-                          TripState.OFFER_EXPIRED):
+                          TripState.OFFER_EXPIRED, TripState.NO_RESULTS,
+                          TripState.SEARCH_FAILED, TripState.SEARCH_QUOTA_REACHED,
+                          TripState.AWAITING_USER_BOOKING,
+                          TripState.PRICE_WATCH_ACTIVE):
             sm.transition(self._repo, trip, TripState.SEARCHING)
         elif trip.state != TripState.SEARCHING:
             raise sm.InvalidTransition(trip.state, TripState.SEARCHING)
 
         offers: list[Offer] = []
         provider_errors: dict[str, str] = {}
+        quota_hit = False
         for provider in self._providers:
             if not any(provider.supports(m) for m in trip.request.modes):
                 continue
             try:
-                offers.extend(provider.search(trip.request))
+                if hasattr(provider, "search_with_options"):
+                    offers.extend(
+                        provider.search_with_options(
+                            trip.request,
+                            force_refresh=force_refresh,
+                            trip_id=trip.id,
+                        )
+                    )
+                else:
+                    offers.extend(provider.search(trip.request))
+            except SearchQuotaExceededError as exc:
+                logger.warning("provider %s quota: %s", provider.name, exc)
+                provider_errors[provider.name] = str(exc)
+                quota_hit = True
             except ProviderError as exc:
                 logger.warning("provider %s failed: %s", provider.name, exc)
                 provider_errors[provider.name] = str(exc)
 
         self._repo.save_offers(trip.id, offers)
         outcome = self._rank_and_present(trip, offers, provider_errors, now)
-        sm.transition(self._repo, trip, TripState.OPTIONS_READY)
+
+        # Outcome state: quota beats failure beats empty.
+        if not offers and quota_hit:
+            sm.transition(self._repo, trip, TripState.SEARCH_QUOTA_REACHED)
+        elif not offers and provider_errors:
+            sm.transition(self._repo, trip, TripState.SEARCH_FAILED)
+        elif not outcome.options:
+            sm.transition(self._repo, trip, TripState.NO_RESULTS)
+        else:
+            sm.transition(self._repo, trip, TripState.OPTIONS_READY)
+        outcome.state = trip.state.value
         return outcome
 
     def _rank_and_present(
@@ -109,13 +145,20 @@ class SearchService:
 
     def refine(self, trip: Trip, command: str, now: Optional[datetime] = None) -> SearchOutcome:
         """Adjust constraints/weights from a short command and re-rank the
-        already-fetched offers (no new provider calls needed)."""
+        already-fetched offers. Never triggers a provider/API call — the
+        only exception is the explicit ``refresh`` command."""
         cmd = command.strip().lower()
         max_options = 3
+        under = re.match(r"under\s+\$?(\d+)", cmd)
+        if cmd == "refresh":
+            # The one refinement that costs quota: an explicit fresh lookup.
+            return self.search(trip, now, force_refresh=True)
         if cmd == "more":
             max_options = 6
         elif cmd in ("nonstop", "nonstop only", "non-stop", "direct only"):
             trip.request.constraints.nonstop_only = True
+        elif under:
+            trip.request.constraints.max_price = float(under.group(1))
         elif cmd == "cheaper":
             base = self.effective_weights(trip)
             trip.request.weights = PreferenceWeights.parse_overrides("price 60", base)
@@ -130,6 +173,14 @@ class SearchService:
             if shown:
                 earliest_shown = min(o.departure for o in shown)
                 trip.request.outbound_window.latest = earliest_shown.time()
+        elif cmd == "later":
+            shown = [
+                self._repo.get_offer(oid) for oid in trip.presented_offer_ids
+            ]
+            shown = [o for o in shown if o is not None]
+            if shown:
+                latest_shown = max(o.departure for o in shown)
+                trip.request.outbound_window.earliest = latest_shown.time()
         else:
             try:
                 trip.request.weights = PreferenceWeights.parse_overrides(
@@ -138,11 +189,15 @@ class SearchService:
             except ValueError:
                 raise ValueError(f"Unrecognized refinement command: {command!r}")
 
-        if trip.state == TripState.OPTIONS_READY:
+        if trip.state in (TripState.OPTIONS_READY, TripState.NO_RESULTS):
             sm.transition(self._repo, trip, TripState.SEARCHING)
         offers = self._repo.get_offers_for_trip(trip.id)
         outcome = self._rank_and_present(trip, offers, {}, now, max_options=max_options)
-        sm.transition(self._repo, trip, TripState.OPTIONS_READY)
+        if outcome.options:
+            sm.transition(self._repo, trip, TripState.OPTIONS_READY)
+        else:
+            sm.transition(self._repo, trip, TripState.NO_RESULTS)
+        outcome.state = trip.state.value
         return outcome
 
     # -- selection ------------------------------------------------------------
@@ -183,6 +238,13 @@ class SearchService:
 def format_options(outcome: SearchOutcome, repo: Repository) -> str:
     """Plain-text option list; the messaging channel decides final styling."""
     if not outcome.options:
+        if outcome.total_offers == 0 and outcome.provider_errors:
+            msgs = "; ".join(outcome.provider_errors.values())
+            return (
+                "The flight search could not be completed: "
+                f"{msgs}. No API quota was wasted on partial results — "
+                "try again, or check quota with the usage command."
+            )
         lines = [
             "No itineraries matched your requirements. "
             f"({outcome.filtered_out} result(s) were excluded by your constraints:)"

@@ -31,19 +31,34 @@ class TripState(str, Enum):
     SEARCHING = "SEARCHING"
     OPTIONS_READY = "OPTIONS_READY"
     OPTION_SELECTED = "OPTION_SELECTED"
+    # Active (link-handoff) flow: the agent never takes payment.
+    BOOKING_LINK_READY = "BOOKING_LINK_READY"
+    AWAITING_USER_BOOKING = "AWAITING_USER_BOOKING"
+    TRIP_CONFIRMED = "TRIP_CONFIRMED"
+    MONITORING = "MONITORING"
+    COMPLETED = "COMPLETED"
+    # Price tracking
+    PRICE_WATCH_ACTIVE = "PRICE_WATCH_ACTIVE"
+    TRACKING_PAUSED = "TRACKING_PAUSED"
+    # Search outcomes
+    NO_RESULTS = "NO_RESULTS"
+    SEARCH_FAILED = "SEARCH_FAILED"
+    SEARCH_QUOTA_REACHED = "SEARCH_QUOTA_REACHED"
+    BOOKING_LINK_UNAVAILABLE = "BOOKING_LINK_UNAVAILABLE"
+    # Exceptional states
+    OFFER_EXPIRED = "OFFER_EXPIRED"
+    PRICE_CHANGED = "PRICE_CHANGED"
+    TRIP_CHANGED = "TRIP_CHANGED"
+    CANCELLED = "CANCELLED"
+    # LEGACY transactional states: kept so historical data and the
+    # isolated Duffel booking code keep working; NOT part of the active
+    # workflow (the agent no longer performs financial transactions).
     REPRICING = "REPRICING"
     AWAITING_BOOKING_CONFIRMATION = "AWAITING_BOOKING_CONFIRMATION"
     BOOKING = "BOOKING"
     CONFIRMED = "CONFIRMED"
-    MONITORING = "MONITORING"
-    COMPLETED = "COMPLETED"
-    # Exceptional states
-    OFFER_EXPIRED = "OFFER_EXPIRED"
-    PRICE_CHANGED = "PRICE_CHANGED"
     BOOKING_FAILED = "BOOKING_FAILED"
     PAYMENT_FAILED = "PAYMENT_FAILED"
-    TRIP_CHANGED = "TRIP_CHANGED"
-    CANCELLED = "CANCELLED"
 
 
 class Trip(BaseModel):

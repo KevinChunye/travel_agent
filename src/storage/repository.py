@@ -25,6 +25,8 @@ from src.models.booking import Booking, BookingIntent, PassengerIdentity, Trip, 
 from src.models.monitoring import MonitoringTask
 from src.models.offer import Offer
 from src.models.preferences import SelectionFeedback, UserPreferences
+from src.models.trip import BookedTrip
+from src.models.watch import PriceObservation, PriceWatch
 
 
 class Repository(ABC):
@@ -79,6 +81,46 @@ class Repository(ABC):
     # -- feedback
     @abstractmethod
     def record_feedback(self, feedback: SelectionFeedback) -> None: ...
+
+    # -- API usage (search budget)
+    @abstractmethod
+    def record_api_call(self, record) -> None: ...
+    @abstractmethod
+    def api_calls_for_month(self, month: str) -> list: ...
+
+    # -- search cache
+    @abstractmethod
+    def cache_put(
+        self, fingerprint: str, provider: str, offers: list[Offer], now: datetime
+    ) -> None: ...
+    @abstractmethod
+    def cache_get(
+        self, fingerprint: str, max_age_minutes: int, now: datetime
+    ) -> Optional[list[Offer]]: ...
+
+    # -- price watches
+    @abstractmethod
+    def save_watch(self, watch: PriceWatch) -> None: ...
+    @abstractmethod
+    def get_watch(self, watch_id: str) -> Optional[PriceWatch]: ...
+    @abstractmethod
+    def list_watches(
+        self, user_id: str, active_only: bool = False
+    ) -> list[PriceWatch]: ...
+    @abstractmethod
+    def due_watches(self, now: datetime) -> list[PriceWatch]: ...
+    @abstractmethod
+    def record_observation(self, obs: PriceObservation) -> None: ...
+    @abstractmethod
+    def observations_for_watch(self, watch_id: str) -> list[PriceObservation]: ...
+
+    # -- confirmed trips (external bookings)
+    @abstractmethod
+    def save_booked_trip(self, trip: BookedTrip) -> None: ...
+    @abstractmethod
+    def get_booked_trip(self, trip_id: str) -> Optional[BookedTrip]: ...
+    @abstractmethod
+    def list_booked_trips(self, user_id: str) -> list[BookedTrip]: ...
 
 
 _SCHEMA = """
@@ -142,6 +184,48 @@ CREATE TABLE IF NOT EXISTS feedback (
     trip_id TEXT NOT NULL,
     data TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS api_calls (
+    id TEXT PRIMARY KEY,
+    month TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    cache_hit INTEGER NOT NULL,
+    data TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_api_calls_month ON api_calls(month);
+
+CREATE TABLE IF NOT EXISTS search_cache (
+    fingerprint TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    offers TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS price_watches (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    active INTEGER NOT NULL,
+    paused INTEGER NOT NULL,
+    next_check_at TEXT,
+    data TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_watches_due ON price_watches(active, paused, next_check_at);
+
+CREATE TABLE IF NOT EXISTS price_observations (
+    id TEXT PRIMARY KEY,
+    watch_id TEXT NOT NULL,
+    observed_at TEXT NOT NULL,
+    data TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_obs_watch ON price_observations(watch_id, observed_at);
+
+CREATE TABLE IF NOT EXISTS booked_trips (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    data TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_booked_user ON booked_trips(user_id);
 """
 
 
@@ -318,6 +402,132 @@ class SQLiteRepository(Repository):
             "INSERT INTO feedback(user_id, trip_id, data) VALUES(?,?,?)",
             (feedback.user_id, feedback.trip_id, feedback.model_dump_json()),
         )
+
+    # -- API usage (search budget)
+    def record_api_call(self, record) -> None:
+        self._execute(
+            "INSERT INTO api_calls(id, month, provider, cache_hit, data) "
+            "VALUES(?,?,?,?,?)",
+            (
+                record.id,
+                record.created_at.strftime("%Y-%m"),
+                record.provider,
+                1 if record.cache_hit else 0,
+                record.model_dump_json(),
+            ),
+        )
+
+    def api_calls_for_month(self, month: str) -> list:
+        from src.services.search_budget import ApiCallRecord
+
+        rows = self._execute(
+            "SELECT data FROM api_calls WHERE month=?", (month,)
+        ).fetchall()
+        return [ApiCallRecord.model_validate_json(r[0]) for r in rows]
+
+    # -- search cache
+    def cache_put(
+        self, fingerprint: str, provider: str, offers: list[Offer], now: datetime
+    ) -> None:
+        payload = json.dumps([json.loads(o.model_dump_json()) for o in offers])
+        self._execute(
+            "INSERT INTO search_cache(fingerprint, provider, created_at, offers) "
+            "VALUES(?,?,?,?) ON CONFLICT(fingerprint) DO UPDATE SET "
+            "provider=excluded.provider, created_at=excluded.created_at, "
+            "offers=excluded.offers",
+            (fingerprint, provider, _utc_iso(now), payload),
+        )
+
+    def cache_get(
+        self, fingerprint: str, max_age_minutes: int, now: datetime
+    ) -> Optional[list[Offer]]:
+        row = self._execute(
+            "SELECT created_at, offers FROM search_cache WHERE fingerprint=?",
+            (fingerprint,),
+        ).fetchone()
+        if row is None:
+            return None
+        created = datetime.fromisoformat(row[0])
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        if (now - created).total_seconds() > max_age_minutes * 60:
+            return None
+        return [Offer.model_validate(o) for o in json.loads(row[1])]
+
+    # -- price watches
+    def save_watch(self, watch: PriceWatch) -> None:
+        self._execute(
+            "INSERT INTO price_watches(id, user_id, active, paused, next_check_at, data) "
+            "VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET "
+            "active=excluded.active, paused=excluded.paused, "
+            "next_check_at=excluded.next_check_at, data=excluded.data",
+            (
+                watch.id,
+                watch.user_id,
+                1 if watch.active else 0,
+                1 if watch.paused else 0,
+                _utc_iso(watch.next_check_at) if watch.next_check_at else None,
+                watch.model_dump_json(),
+            ),
+        )
+
+    def get_watch(self, watch_id: str) -> Optional[PriceWatch]:
+        row = self._execute(
+            "SELECT data FROM price_watches WHERE id=?", (watch_id,)
+        ).fetchone()
+        return PriceWatch.model_validate_json(row[0]) if row else None
+
+    def list_watches(
+        self, user_id: str, active_only: bool = False
+    ) -> list[PriceWatch]:
+        sql = "SELECT data FROM price_watches WHERE user_id=?"
+        if active_only:
+            sql += " AND active=1"
+        rows = self._execute(sql, (user_id,)).fetchall()
+        return [PriceWatch.model_validate_json(r[0]) for r in rows]
+
+    def due_watches(self, now: datetime) -> list[PriceWatch]:
+        rows = self._execute(
+            "SELECT data FROM price_watches WHERE active=1 AND paused=0 "
+            "AND next_check_at IS NOT NULL AND next_check_at<=? "
+            "ORDER BY next_check_at",
+            (_utc_iso(now),),
+        ).fetchall()
+        return [PriceWatch.model_validate_json(r[0]) for r in rows]
+
+    def record_observation(self, obs: PriceObservation) -> None:
+        self._execute(
+            "INSERT INTO price_observations(id, watch_id, observed_at, data) "
+            "VALUES(?,?,?,?)",
+            (obs.id, obs.watch_id, _utc_iso(obs.observed_at), obs.model_dump_json()),
+        )
+
+    def observations_for_watch(self, watch_id: str) -> list[PriceObservation]:
+        rows = self._execute(
+            "SELECT data FROM price_observations WHERE watch_id=? ORDER BY observed_at",
+            (watch_id,),
+        ).fetchall()
+        return [PriceObservation.model_validate_json(r[0]) for r in rows]
+
+    # -- confirmed trips (external bookings)
+    def save_booked_trip(self, trip: BookedTrip) -> None:
+        self._execute(
+            "INSERT INTO booked_trips(id, user_id, status, data) VALUES(?,?,?,?) "
+            "ON CONFLICT(id) DO UPDATE SET status=excluded.status, data=excluded.data",
+            (trip.id, trip.user_id, trip.status.value, trip.model_dump_json()),
+        )
+
+    def get_booked_trip(self, trip_id: str) -> Optional[BookedTrip]:
+        row = self._execute(
+            "SELECT data FROM booked_trips WHERE id=?", (trip_id,)
+        ).fetchone()
+        return BookedTrip.model_validate_json(row[0]) if row else None
+
+    def list_booked_trips(self, user_id: str) -> list[BookedTrip]:
+        rows = self._execute(
+            "SELECT data FROM booked_trips WHERE user_id=?", (user_id,)
+        ).fetchall()
+        return [BookedTrip.model_validate_json(r[0]) for r in rows]
 
     def close(self) -> None:
         with self._lock:
