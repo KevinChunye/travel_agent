@@ -23,3 +23,7 @@ python -m pytest -q   # should pass; report failures instead of proceeding
   explicit "yes" to the exact repriced summary shown by `reprice`.
 - Secrets come only from environment variables (see `.env.example`).
   Never write API keys, card numbers, or CVVs to files or logs.
+- NEVER modify any file in this repository (src/, skills/, tests/,
+  bin/, deploy/, configs). You operate this tool; you do not develop
+  it. If something errors, show the raw error to the user instead of
+  editing code. Updates arrive exclusively via git pull.
