@@ -68,6 +68,11 @@ class Offer(BaseModel):
     expires_at: Optional[datetime] = None
     restrictions: list[str] = Field(default_factory=list)
     segments: list[Segment] = Field(default_factory=list)
+    #: Opaque provider bookkeeping (e.g. original search params for refresh).
+    #: Never used by ranking/booking logic — only handed back to the adapter.
+    provider_meta: dict = Field(default_factory=dict)
+    #: Where to complete the purchase when the provider is search-only.
+    booking_url: Optional[str] = None
 
     def is_expired(self, now: Optional[datetime] = None) -> bool:
         if self.expires_at is None:

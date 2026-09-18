@@ -15,6 +15,7 @@ class Settings:
     providers: tuple[str, ...] = ("mock",)
     default_currency: str = "USD"
     duffel_api_key: str | None = None
+    serpapi_api_key: str | None = None
     whatsapp_access_token: str | None = None
     whatsapp_phone_number_id: str | None = None
     price_buffer_pct: float = 0.0  # tolerated price drift vs approved total
@@ -31,6 +32,7 @@ class Settings:
             providers=providers,
             default_currency=os.environ.get("DEFAULT_CURRENCY", "USD"),
             duffel_api_key=os.environ.get("DUFFEL_API_KEY"),
+            serpapi_api_key=os.environ.get("SERPAPI_API_KEY"),
             whatsapp_access_token=os.environ.get("WHATSAPP_ACCESS_TOKEN"),
             whatsapp_phone_number_id=os.environ.get("WHATSAPP_PHONE_NUMBER_ID"),
             price_buffer_pct=float(os.environ.get("PRICE_BUFFER_PCT", "0")),
@@ -42,11 +44,13 @@ def build_providers(settings: Settings):
     from src.providers.distribusion import DistribusionProvider
     from src.providers.duffel import DuffelProvider
     from src.providers.mock import MockFlightProvider
+    from src.providers.serpapi import SerpApiFlightsProvider
     from src.providers.trainline import TrainlineProvider
 
     registry = {
         "mock": lambda: MockFlightProvider(),
         "duffel": lambda: DuffelProvider(api_key=settings.duffel_api_key),
+        "serpapi": lambda: SerpApiFlightsProvider(api_key=settings.serpapi_api_key),
         "trainline": lambda: TrainlineProvider(),
         "distribusion": lambda: DistribusionProvider(),
     }

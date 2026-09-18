@@ -228,6 +228,13 @@ def format_options(outcome: SearchOutcome, repo: Repository) -> str:
             f"{', '.join(policy) or 'restrictive fare'}\n"
             f"   why: {option.ranked.explanation}"
         )
+    booking_url = next(
+        (o.ranked.offer.booking_url for o in outcome.options
+         if o.ranked.offer.booking_url),
+        None,
+    )
+    if booking_url:
+        lines.append(f"Book these fares on Google Flights: {booking_url}")
     lines.append(
         "Reply 1/2/3 to pick, or try: more, cheaper, faster, earlier, "
         "nonstop only, or weights like 'price 60, time 25, convenience 15'."

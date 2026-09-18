@@ -74,6 +74,14 @@ User follow-ups map to `refine --trip <id> --command "<cmd>"`:
 weights like `price 60, time 25, convenience 15`. A reply of `1`/`2`/`3`
 means `select --trip <id> --option <n>`.
 
+### Search-only providers
+
+When the active provider is search-only (e.g. `serpapi` / Google
+Flights), the options include a "Book these fares on Google Flights"
+link. In that mode: present options and the link, and do **not** offer
+to book in-agent — `book` will refuse. Booking in-agent requires a
+bookable provider (`duffel`).
+
 ### 4. Reprice and confirm — the only path to a booking
 
 1. `reprice --trip <id>` refreshes the selected offer and returns
