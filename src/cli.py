@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from typing import Any
@@ -41,7 +42,19 @@ from src.storage.repository import SQLiteRepository
 
 
 def _out(payload: dict[str, Any]) -> None:
-    print(json.dumps(payload, default=str, indent=2))
+    text = json.dumps(payload, default=str, indent=2)
+    print(text)
+    # Belt-and-braces for exec environments that swallow stdout (seen with
+    # sandboxed agent shells): every response is also written to a file the
+    # caller can `cat` afterwards.
+    try:
+        from pathlib import Path
+
+        out = Path(os.environ.get("TRAVEL_AGENT_HOME", ".")) / "data"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "last_response.json").write_text(text)
+    except OSError:
+        pass
 
 
 def _fail(message: str, **extra: Any) -> None:

@@ -19,10 +19,17 @@ python -m src.cli <command> [flags]
 ```
 
 Run them from the repository root — the directory containing `src/` and
-`skills/` (if `TRAVEL_AGENT_HOME` is set, `cd` there first). Every
-command prints JSON. When a command returns `display_text`, send it to
-the user **verbatim** — do not recompute, round, or paraphrase prices,
-times, or links.
+`skills/` (if `TRAVEL_AGENT_HOME` is set, `cd` there first; the default
+deployment root is `/data/travel_agent`). Every command prints JSON.
+When a command returns `display_text`, send it to the user **verbatim**
+— do not recompute, round, or paraphrase prices, times, or links.
+
+**If a command prints nothing** (a known quirk of some sandboxed exec
+environments): every command also persists its full response to
+`data/last_response.json` under the repo root — immediately run
+`cat data/last_response.json` and use that as the command's output. If
+that file is missing or stale too, report the tool as unavailable;
+never invent results.
 
 ## The two iron rules
 

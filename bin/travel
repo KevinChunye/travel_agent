@@ -1,0 +1,13 @@
+#!/bin/sh
+# Stable entrypoint for the travel-agent CLI, safe to call from any cwd.
+# Resolves the repo root (TRAVEL_AGENT_HOME wins, else this script's parent),
+# runs the command, and echoes the persisted response file as a fallback for
+# exec environments that swallow stdout.
+ROOT="${TRAVEL_AGENT_HOME:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
+cd "$ROOT" || { echo "{\"ok\": false, \"error\": \"repo not found at $ROOT\"}"; exit 1; }
+python3 -m src.cli "$@"
+rc=$?
+if [ $rc -ne 0 ] && [ -f data/last_response.json ]; then
+    cat data/last_response.json
+fi
+exit $rc
