@@ -1,0 +1,11 @@
+{
+  "models": {
+    "providers": {
+      "openai": {
+        "agentRuntime": {
+          "id": "openclaw"
+        }
+      }
+    }
+  }
+}

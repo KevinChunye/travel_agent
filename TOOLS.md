@@ -29,6 +29,9 @@ Put the entire brief directly in the `task` string. Omit `attachments` and
 `forkContext` entirely: attachments are intentionally disabled, and the child
 needs only the minimum travel context, not files or the parent conversation.
 Keep timeout and cleanup as top-level tool arguments, not inside the brief.
+Use the actual OpenClaw `sessions_spawn` tool, never a native Codex subagent or
+a fabricated `agent:travel-researcher:subagent:` session key. A missing tool is
+a deployment blocker; only record IDs returned by the real tool.
 Include the expected JSON fields in the brief; the child does not inherit your
 skill context. Each research item needs category, name, source_url, checked_at
 (actual ISO timestamp), rationale, caveats. Top level: research[], unresolved[].

@@ -125,3 +125,25 @@ Maritime's template deployment does not upload uncommitted local repository
 changes. Publish the reviewed branch or explicitly transfer the release before
 running setup. Existing secrets in Maritime are not proof that the provider key
 or configured base URL is usable. Verify both without logging their values.
+
+## Maritime OpenClaw 2026.7.1 runtime
+
+The deployed Maritime image uses a newer runtime than the local 2026.2.14
+baseline. For direct OpenAI API use, merge
+`config/openclaw/maritime-runtime.patch.json` into the **existing OpenAI provider**
+after preparing the main configuration. Validate before applying it:
+
+```sh
+openclaw config patch --file config/openclaw/maritime-runtime.patch.json --dry-run
+openclaw config patch --file config/openclaw/maritime-runtime.patch.json
+```
+
+This selects provider-scoped `agentRuntime.id: "openclaw"`. Without that pin,
+2026.7.1 selected the native Codex backend in the deployment test, whose native
+subagent handoff did not produce the configured OpenClaw researcher session.
+An attachment-bearing handoff was also rejected; send the brief inline in `task`.
+Do not enable attachments or substitute a native child to work around failure.
+Validate the patch with the installed version; it is separate from the legacy
+example because 2026.2.14 does not share this runtime-selection schema.
+Verify actual researcher session and tool traces, not only the parent's narrative.
+[OpenClaw runtime configuration](https://docs.openclaw.ai/plugins/sdk-agent-harness/runtime-config).
