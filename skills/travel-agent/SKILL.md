@@ -161,7 +161,9 @@ API reserve. The user is notified when their target price is hit.
    unresolved, research=[], reviewed=false. `checkpoint --trip <id> --json -`
    accepts JSON via stdin. Never interpolate untrusted prose into shell code.
 4. Delegate exactly one bounded destination brief with `sessions_spawn`:
-   agentId="travel-researcher", runTimeoutSeconds=120, cleanup="keep".
+   agentId="travel-researcher", cleanup="keep". The Maritime 2026.7.1
+   configuration enforces a 120-second default: omit per-call runTimeoutSeconds.
+   On older versions exposing that argument, set runTimeoutSeconds=120.
    Put the brief in the `task` string; omit attachments and forkContext.
    Do not package the brief as an attached file.
    Include only destination, dates, currency/budgets, diet/mobility preferences

@@ -147,3 +147,9 @@ Validate the patch with the installed version; it is separate from the legacy
 example because 2026.2.14 does not share this runtime-selection schema.
 Verify actual researcher session and tool traces, not only the parent's narrative.
 [OpenClaw runtime configuration](https://docs.openclaw.ai/plugins/sdk-agent-harness/runtime-config).
+
+OpenClaw 2026.7.1 also rejects per-call `runTimeoutSeconds`. This patch sets
+`agents.defaults.subagents.runTimeoutSeconds: 120`; calls omit the rejected field.
+The isolated 2026.2.14 timeout evaluation uses that older version's per-call field.
+Do not run its one-second timeout case against production or assume the two
+versions have interchangeable tool schemas.

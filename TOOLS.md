@@ -24,11 +24,14 @@ once and then stop with a blocker if it still fails. Never fabricate success.
 ## Delegation contract
 
 Use `sessions_spawn` with **agentId="travel-researcher"** (never omit it),
-`runTimeoutSeconds=120`, `cleanup="keep"`, and a bounded destination brief.
+`cleanup="keep"` and a bounded destination brief. On Maritime OpenClaw 2026.7.1,
+omit the per-call `runTimeoutSeconds` argument: the gateway enforces the
+120-second bound via `agents.defaults.subagents.runTimeoutSeconds`. On older
+versions that expose a per-call timeout, pass `runTimeoutSeconds=120`.
 Put the entire brief directly in the `task` string. Omit `attachments` and
 `forkContext` entirely: attachments are intentionally disabled, and the child
 needs only the minimum travel context, not files or the parent conversation.
-Keep timeout and cleanup as top-level tool arguments, not inside the brief.
+Keep supported control arguments at the tool-call level, not inside the brief.
 Use the actual OpenClaw `sessions_spawn` tool, never a native Codex subagent or
 a fabricated `agent:travel-researcher:subagent:` session key. A missing tool is
 a deployment blocker; only record IDs returned by the real tool.
