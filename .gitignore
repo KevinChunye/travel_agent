@@ -16,3 +16,11 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 .DS_Store
+.maritime
+
+# SQLite sidecars and local runtime/evidence secrets
+*.sqlite3-*
+*.db-*
+.openclaw/
+.env.*
+!.env.example

@@ -1,0 +1,14 @@
+{
+  "openclaw_version": "2026.2.14",
+  "authentication_source": "explicit local .env; key never copied into config or evidence",
+  "openai_http_status": 200,
+  "api_check_model": "gpt-4.1-mini-2025-04-14",
+  "api_check_tokens": 23,
+  "main_agent_model": "openai/gpt-5.1",
+  "main_reasoning": "low",
+  "researcher_model": "openai/gpt-4.1-mini",
+  "successful_tool_execution": true,
+  "config_validation": "passed",
+  "live_evidence": "openclaw-live.json",
+  "whatsapp_delivery_tested": false
+}

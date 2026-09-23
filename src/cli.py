@@ -90,7 +90,13 @@ class App:
 
 def cmd_new_trip(app: App, args: argparse.Namespace) -> None:
     try:
-        request = TravelRequest.model_validate(_load_json_arg(args.request_json))
+        payload = _load_json_arg(args.request_json)
+        prefs = app.repo.get_preferences(args.user)
+        if prefs:
+            if "origin" not in payload and prefs.home_airport:
+                payload["origin"] = prefs.home_airport
+            payload.setdefault("cabin", prefs.cabin_preference.value)
+        request = TravelRequest.model_validate(payload)
     except (ValidationError, json.JSONDecodeError) as exc:
         _fail(f"Invalid travel request: {exc}")
     trip = Trip(user_id=args.user, request=request)
@@ -432,6 +438,21 @@ def cmd_dashboard(app: App, args: argparse.Namespace) -> None:
     serve(app.repo, app.budget, port=args.port)
 
 
+def cmd_checkpoint(app: App, args: argparse.Namespace) -> None:
+    from src.services.planning import PlanCheckpoint, PlanningStore
+    trip = app._get_trip(args.trip)
+    store = PlanningStore(app.repo)
+    if args.json is not None:
+        try:
+            store.save(trip.id, PlanCheckpoint.model_validate(_load_json_arg(args.json)))
+        except (ValidationError, ValueError) as exc:
+            _fail(str(exc))
+    checkpoint = store.get(trip.id)
+    _out({"ok": True, "trip_id": trip.id,
+          "checkpoint": checkpoint.model_dump(mode="json") if checkpoint else None,
+          "events": store.events(trip.id)})
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="travel-agent")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -443,6 +464,9 @@ def build_parser() -> argparse.ArgumentParser:
         sp.set_defaults(fn=fn)
         return sp
 
+    add("checkpoint", cmd_checkpoint,
+        ("--trip", {"required": True}),
+        ("--json", {"default": None, "help": "Validated checkpoint JSON or stdin -"}))
     add("new-trip", cmd_new_trip,
         ("--user", {"required": True}),
         ("--request-json", {"required": True, "help": "JSON or '-' for stdin"}))
@@ -502,7 +526,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     app = App()
-    args.fn(app, args)
+    try:
+        args.fn(app, args)
+    finally:
+        app.repo.close()
 
 
 if __name__ == "__main__":

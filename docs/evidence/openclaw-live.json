@@ -1,0 +1,1020 @@
+{
+  "kind": "Observed live OpenClaw tool/session evidence; synthetic user and mock flights",
+  "openclaw_version": "2026.2.14",
+  "cases": [
+    {
+      "case": "team-plan",
+      "model": "gpt-4.1-mini",
+      "usage": {
+        "input": 12650,
+        "output": 1627,
+        "cacheRead": 143232,
+        "total": 157509
+      },
+      "session_id": "629db337-9e22-4e15-8578-1a6c5a347ad8",
+      "calls": [
+        {
+          "tool": "exec",
+          "operation": "create"
+        },
+        {
+          "tool": "exec",
+          "operation": "search"
+        },
+        {
+          "tool": "exec",
+          "operation": "new-trip",
+          "explicit_origin_in_command": false
+        },
+        {
+          "tool": "exec",
+          "operation": "prefs-set"
+        },
+        {
+          "tool": "exec",
+          "operation": "prefs-set"
+        },
+        {
+          "tool": "exec",
+          "operation": "prefs-set"
+        },
+        {
+          "tool": "exec",
+          "operation": "prefs-set"
+        },
+        {
+          "tool": "exec",
+          "operation": "new-trip",
+          "explicit_origin_in_command": false
+        },
+        {
+          "tool": "exec",
+          "operation": "update-trip"
+        },
+        {
+          "tool": "exec",
+          "operation": "update-trip"
+        },
+        {
+          "tool": "exec",
+          "operation": "update-trip"
+        },
+        {
+          "tool": "exec",
+          "operation": "update-trip"
+        },
+        {
+          "tool": "exec",
+          "operation": "search"
+        },
+        {
+          "tool": "sessions_spawn",
+          "agent_id": null,
+          "timeout_seconds": 90
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "process"
+        },
+        {
+          "tool": "process"
+        },
+        {
+          "tool": "sessions_history"
+        },
+        {
+          "tool": "sessions_history"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        }
+      ],
+      "checkpoints": [],
+      "children": [
+        {
+          "run_id": "0f4171fc-c12c-4763-aeca-4556eec075fd",
+          "session_key": "agent:travel:subagent:39d358e9-6307-4ed7-9c34-da2164f86fe1",
+          "outcome": {
+            "status": "ok"
+          },
+          "duration_ms": 6392,
+          "tools": [
+            "web_fetch",
+            "web_fetch"
+          ]
+        }
+      ],
+      "tool_errors": 9,
+      "flight_display_verbatim": false,
+      "final_text_sha256": "556770d882e33a3997a315e5841883c2a11be62c6eb76f70c35491b21c61d62b",
+      "trip_ids": [
+        "trip_b5eb339e7a76"
+      ],
+      "search_states": [
+        "OPTIONS_READY"
+      ],
+      "preferences_read": [
+        {
+          "user_id": "evaluation-demo",
+          "home_airport": "BOS",
+          "dietary_preferences": [],
+          "hotel_max_nightly": null
+        },
+        {
+          "user_id": "evaluation-demo",
+          "home_airport": "BOS",
+          "dietary_preferences": [
+            "vegetarian"
+          ],
+          "hotel_max_nightly": null
+        },
+        {
+          "user_id": "evaluation-demo",
+          "home_airport": "BOS",
+          "dietary_preferences": [
+            "vegetarian"
+          ],
+          "hotel_max_nightly": 180.0
+        }
+      ]
+    },
+    {
+      "case": "team-revised",
+      "model": "gpt-4.1-mini",
+      "usage": {
+        "input": 8657,
+        "output": 890,
+        "cacheRead": 52992,
+        "total": 62539
+      },
+      "session_id": "e7958eb7-bdca-401a-aa44-9dcf2b8fb439",
+      "calls": [
+        {
+          "tool": "exec",
+          "operation": "prefs-set"
+        },
+        {
+          "tool": "exec",
+          "operation": "new-trip",
+          "explicit_origin_in_command": false
+        },
+        {
+          "tool": "exec",
+          "operation": "search"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "sessions_spawn",
+          "agent_id": "travel-researcher",
+          "timeout_seconds": 90
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "sessions_history"
+        }
+      ],
+      "checkpoints": [
+        {
+          "phase": "researching",
+          "reviewed": false,
+          "research_count": 0,
+          "unresolved_count": 0,
+          "source_urls": []
+        },
+        {
+          "phase": "researching",
+          "reviewed": false,
+          "research_count": 0,
+          "unresolved_count": 0,
+          "source_urls": []
+        }
+      ],
+      "children": [
+        {
+          "run_id": "2d3d4d9b-54c7-44c1-9192-93309fe3bc31",
+          "session_key": "agent:travel-researcher:subagent:e3038b4b-af82-46db-9f0b-0a1e8bfe5dd2",
+          "outcome": {
+            "status": "ok"
+          },
+          "duration_ms": 5076,
+          "tools": [
+            "web_fetch"
+          ]
+        }
+      ],
+      "tool_errors": 3,
+      "flight_display_verbatim": false,
+      "final_text_sha256": "51e074716b5c2e2884e2b496de5efe194c82b2b6ad88657d9578751d41fc3f1e",
+      "trip_ids": [
+        "trip_4bd512d05208"
+      ],
+      "search_states": [
+        "OPTIONS_READY"
+      ],
+      "preferences_read": [
+        {
+          "user_id": "evaluation-revised",
+          "home_airport": "BOS",
+          "dietary_preferences": [
+            "vegetarian"
+          ],
+          "hotel_max_nightly": 180.0
+        }
+      ]
+    },
+    {
+      "case": "team-final",
+      "model": "gpt-5.1",
+      "usage": {
+        "input": 17124,
+        "output": 7153,
+        "cacheRead": 132224,
+        "total": 156501
+      },
+      "session_id": "bbe4246a-4261-458f-a749-3eadf433e18f",
+      "calls": [
+        {
+          "tool": "read"
+        },
+        {
+          "tool": "exec",
+          "operation": "prefs-set"
+        },
+        {
+          "tool": "exec",
+          "operation": "new-trip",
+          "explicit_origin_in_command": true
+        },
+        {
+          "tool": "exec",
+          "operation": "search"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "sessions_spawn",
+          "agent_id": "travel-researcher",
+          "timeout_seconds": 90
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "sessions_history"
+        },
+        {
+          "tool": "sessions_history"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        }
+      ],
+      "checkpoints": [
+        {
+          "phase": "researching",
+          "reviewed": false,
+          "research_count": 0,
+          "unresolved_count": 0,
+          "source_urls": []
+        },
+        {
+          "phase": "researching",
+          "reviewed": false,
+          "research_count": 0,
+          "unresolved_count": 0,
+          "source_urls": []
+        },
+        {
+          "phase": "ready",
+          "reviewed": true,
+          "research_count": 0,
+          "unresolved_count": 0,
+          "source_urls": []
+        }
+      ],
+      "children": [
+        {
+          "run_id": "bc2629c6-63ea-41a6-b163-9ecb86f9bd4e",
+          "session_key": "agent:travel-researcher:subagent:43345395-70f8-4f7a-a488-f0c3d213a694",
+          "outcome": {
+            "status": "ok"
+          },
+          "duration_ms": 4631,
+          "tools": [
+            "web_fetch"
+          ]
+        }
+      ],
+      "tool_errors": 2,
+      "flight_display_verbatim": false,
+      "final_text_sha256": "de2bdebafb017b81c8750de90a61e8655b60f46967f9e090ea0189e311ef3d75",
+      "trip_ids": [
+        "trip_de5d4e608919"
+      ],
+      "search_states": [
+        "OPTIONS_READY"
+      ],
+      "preferences_read": [
+        {
+          "user_id": "evaluation-final",
+          "home_airport": "BOS",
+          "dietary_preferences": [
+            "vegetarian"
+          ],
+          "hotel_max_nightly": 180.0
+        }
+      ]
+    },
+    {
+      "case": "memory-resume",
+      "model": "gpt-5.1",
+      "usage": {
+        "input": 10444,
+        "output": 3237,
+        "cacheRead": 81920,
+        "total": 95601
+      },
+      "session_id": "b1b95d24-ba7b-40c3-ac75-c62157ec65d3",
+      "calls": [
+        {
+          "tool": "read"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "exec",
+          "operation": "status"
+        },
+        {
+          "tool": "exec",
+          "operation": "prefs-get"
+        },
+        {
+          "tool": "exec",
+          "operation": "prefs-get"
+        },
+        {
+          "tool": "exec",
+          "operation": "prefs-get"
+        },
+        {
+          "tool": "exec",
+          "operation": "other"
+        },
+        {
+          "tool": "exec",
+          "operation": "other"
+        },
+        {
+          "tool": "exec",
+          "operation": "new-trip",
+          "explicit_origin_in_command": false
+        }
+      ],
+      "checkpoints": [
+        {
+          "phase": "ready",
+          "reviewed": true,
+          "research_count": 0,
+          "unresolved_count": 0,
+          "source_urls": []
+        }
+      ],
+      "children": [],
+      "tool_errors": 1,
+      "flight_display_verbatim": false,
+      "final_text_sha256": "ea88bb35e19c2fa5f0fe185bc14a088a545557c4a323318b0aaf76a6d1e5166b",
+      "trip_ids": [
+        "trip_91003acad0ce",
+        "trip_de5d4e608919"
+      ],
+      "search_states": [],
+      "preferences_read": [
+        {
+          "user_id": "[non-evaluation identity]",
+          "home_airport": null,
+          "dietary_preferences": [],
+          "hotel_max_nightly": null
+        }
+      ]
+    },
+    {
+      "case": "team-verified",
+      "model": "gpt-5.1",
+      "usage": {
+        "input": 9046,
+        "output": 2654,
+        "cacheRead": 65536,
+        "total": 77236
+      },
+      "session_id": "bbb4280f-02bb-4fc9-9f14-b7907c4e883e",
+      "calls": [
+        {
+          "tool": "read"
+        },
+        {
+          "tool": "exec",
+          "operation": "prefs-get"
+        },
+        {
+          "tool": "exec",
+          "operation": "new-trip",
+          "explicit_origin_in_command": false
+        },
+        {
+          "tool": "exec",
+          "operation": "search"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "sessions_spawn",
+          "agent_id": "travel-researcher",
+          "timeout_seconds": 90
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "web_fetch",
+          "url": "https://www.transitchicago.com/airports/"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        }
+      ],
+      "checkpoints": [
+        {
+          "phase": "researching",
+          "reviewed": false,
+          "research_count": 0,
+          "unresolved_count": 0,
+          "source_urls": []
+        },
+        {
+          "phase": "researching",
+          "reviewed": false,
+          "research_count": 0,
+          "unresolved_count": 0,
+          "source_urls": []
+        },
+        {
+          "phase": "blocked",
+          "reviewed": true,
+          "research_count": 4,
+          "unresolved_count": 5,
+          "source_urls": [
+            "https://www.transitchicago.com/airports/"
+          ]
+        }
+      ],
+      "children": [
+        {
+          "run_id": "104a3b9a-860b-4f79-a454-3f3d3db0dca9",
+          "session_key": "agent:travel-researcher:subagent:d96e811f-6346-4ed6-9bb1-f5c8aa1fbca9",
+          "outcome": {
+            "status": "ok"
+          },
+          "duration_ms": 9863,
+          "tools": [
+            "web_fetch"
+          ]
+        }
+      ],
+      "tool_errors": 1,
+      "flight_display_verbatim": true,
+      "final_text_sha256": "9dfde4fc4e21b4477502135deaf1377ea19983d438f57e4ad8b2d8487e45447d",
+      "trip_ids": [
+        "trip_2ec6cc80f9b8"
+      ],
+      "search_states": [
+        "OPTIONS_READY"
+      ],
+      "preferences_read": [
+        {
+          "user_id": "evaluation-final",
+          "home_airport": "BOS",
+          "dietary_preferences": [
+            "vegetarian"
+          ],
+          "hotel_max_nightly": 180.0
+        }
+      ]
+    },
+    {
+      "case": "memory-verified",
+      "model": "gpt-5.1",
+      "usage": {
+        "input": 12658,
+        "output": 742,
+        "cacheRead": 28288,
+        "total": 41688
+      },
+      "session_id": "1376e03b-180a-4eac-8b82-965711f8f0c8",
+      "calls": [
+        {
+          "tool": "read"
+        },
+        {
+          "tool": "exec",
+          "operation": "prefs-get"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "exec",
+          "operation": "new-trip",
+          "explicit_origin_in_command": false
+        }
+      ],
+      "checkpoints": [
+        {
+          "phase": "blocked",
+          "reviewed": true,
+          "research_count": 4,
+          "unresolved_count": 5,
+          "source_urls": [
+            "https://www.transitchicago.com/airports/"
+          ]
+        }
+      ],
+      "children": [],
+      "tool_errors": 0,
+      "flight_display_verbatim": false,
+      "final_text_sha256": "7f2dc23f4c26716084f3ac075f38b840563df45794ed7f7c58764cc3c6a397a3",
+      "trip_ids": [
+        "trip_2ec6cc80f9b8",
+        "trip_8bbee9f4cbb2"
+      ],
+      "search_states": [],
+      "preferences_read": [
+        {
+          "user_id": "evaluation-final",
+          "home_airport": "BOS",
+          "dietary_preferences": [
+            "vegetarian"
+          ],
+          "hotel_max_nightly": 180.0
+        }
+      ]
+    },
+    {
+      "case": "refine-verified",
+      "model": "gpt-5.1",
+      "usage": {
+        "input": 8787,
+        "output": 517,
+        "cacheRead": 13056,
+        "total": 22360
+      },
+      "session_id": "31bc3e28-efdf-4c72-bd26-9fec5785cd67",
+      "calls": [
+        {
+          "tool": "read"
+        },
+        {
+          "tool": "exec",
+          "operation": "refine"
+        }
+      ],
+      "checkpoints": [],
+      "children": [],
+      "tool_errors": 0,
+      "flight_display_verbatim": true,
+      "final_text_sha256": "6b3a1f5e2d11ba5565ae22a78cca47d7788b2d87ba7ef225c31c753178a78085",
+      "trip_ids": [
+        "trip_2ec6cc80f9b8"
+      ],
+      "search_states": [],
+      "preferences_read": []
+    },
+    {
+      "case": "failure-verified",
+      "model": "gpt-5.1",
+      "usage": {
+        "input": 3948,
+        "output": 2309,
+        "cacheRead": 30464,
+        "total": 36721
+      },
+      "session_id": "e1a05a53-16ec-4d8f-ae70-ecdea8e54088",
+      "calls": [
+        {
+          "tool": "read"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "exec",
+          "operation": "search"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        }
+      ],
+      "checkpoints": [
+        {
+          "phase": "blocked",
+          "reviewed": true,
+          "research_count": 4,
+          "unresolved_count": 5,
+          "source_urls": [
+            "https://www.transitchicago.com/airports/"
+          ]
+        },
+        {
+          "phase": "blocked",
+          "reviewed": true,
+          "research_count": 4,
+          "unresolved_count": 3,
+          "source_urls": [
+            "https://www.transitchicago.com/airports/"
+          ]
+        }
+      ],
+      "children": [],
+      "tool_errors": 1,
+      "flight_display_verbatim": true,
+      "final_text_sha256": "856183357eef2d71d990aeede5e51c70395d7f4506096abfa4d61cb37a3d37d9",
+      "trip_ids": [
+        "trip_2ec6cc80f9b8"
+      ],
+      "search_states": [
+        "SEARCH_FAILED"
+      ],
+      "preferences_read": []
+    },
+    {
+      "case": "timeout-verified",
+      "model": "gpt-5.1",
+      "usage": {
+        "input": 11943,
+        "output": 1752,
+        "cacheRead": 31872,
+        "total": 45567
+      },
+      "session_id": "6064a54f-f247-4038-b1df-889eedf96d55",
+      "calls": [
+        {
+          "tool": "read"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "sessions_spawn",
+          "agent_id": "travel-researcher",
+          "timeout_seconds": 1
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        }
+      ],
+      "checkpoints": [
+        {
+          "phase": "blocked",
+          "reviewed": true,
+          "research_count": 4,
+          "unresolved_count": 3,
+          "source_urls": [
+            "https://www.transitchicago.com/airports/"
+          ]
+        },
+        {
+          "phase": "researching",
+          "reviewed": false,
+          "research_count": 4,
+          "unresolved_count": 1,
+          "source_urls": [
+            "https://www.transitchicago.com/airports/"
+          ]
+        }
+      ],
+      "children": [
+        {
+          "run_id": "1495ce58-5786-4215-a8c4-d0be7e38aa10",
+          "session_key": "agent:travel-researcher:subagent:4b9929c3-dadc-46a4-b840-89818b2f87d5",
+          "outcome": {
+            "status": "timeout"
+          },
+          "duration_ms": 1024,
+          "tools": [
+            "web_fetch"
+          ]
+        }
+      ],
+      "tool_errors": 0,
+      "flight_display_verbatim": false,
+      "final_text_sha256": "d955a47309beb7ebbbc3a98d269e3958d7057323d8459cf65db0ae8db6e3f0da",
+      "trip_ids": [
+        "trip_2ec6cc80f9b8"
+      ],
+      "search_states": [],
+      "preferences_read": []
+    },
+    {
+      "case": "timeout-final",
+      "model": "gpt-5.1",
+      "usage": {
+        "input": 7676,
+        "output": 1879,
+        "cacheRead": 44928,
+        "total": 54483
+      },
+      "session_id": "8ebb6c26-409b-4506-8640-3d97bff3617f",
+      "calls": [
+        {
+          "tool": "read"
+        },
+        {
+          "tool": "exec",
+          "operation": "status"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "sessions_spawn",
+          "agent_id": "travel-researcher",
+          "timeout_seconds": 1
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        }
+      ],
+      "checkpoints": [
+        {
+          "phase": "researching",
+          "reviewed": false,
+          "research_count": 0,
+          "unresolved_count": 1,
+          "source_urls": []
+        },
+        {
+          "phase": "researching",
+          "reviewed": false,
+          "research_count": 0,
+          "unresolved_count": 1,
+          "source_urls": []
+        },
+        {
+          "phase": "blocked",
+          "reviewed": false,
+          "research_count": 0,
+          "unresolved_count": 1,
+          "source_urls": []
+        }
+      ],
+      "children": [
+        {
+          "run_id": "9e411ecd-ef0c-4624-b208-1f73866312dc",
+          "session_key": "agent:travel-researcher:subagent:c83e73d2-b554-42a9-bebc-ad9d43bfe079",
+          "outcome": {
+            "status": "timeout"
+          },
+          "duration_ms": 1634,
+          "tools": [
+            "web_fetch"
+          ]
+        }
+      ],
+      "tool_errors": 0,
+      "flight_display_verbatim": false,
+      "final_text_sha256": "7f3205ac2125b042e841ac608c753df502ecbacc82fc9c96fccdfe320cc0a0ad",
+      "trip_ids": [
+        "trip_2ec6cc80f9b8"
+      ],
+      "search_states": [],
+      "preferences_read": []
+    },
+    {
+      "case": "timeout-retained",
+      "model": "gpt-5.1",
+      "usage": {
+        "input": 14578,
+        "output": 2496,
+        "cacheRead": 47616,
+        "total": 64690
+      },
+      "session_id": "ec78facf-c7ec-478f-af38-50b8693f2a48",
+      "calls": [
+        {
+          "tool": "read"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "sessions_spawn",
+          "agent_id": "travel-researcher",
+          "timeout_seconds": 1
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        },
+        {
+          "tool": "exec",
+          "operation": "checkpoint"
+        }
+      ],
+      "checkpoints": [
+        {
+          "phase": "blocked",
+          "reviewed": true,
+          "research_count": 4,
+          "unresolved_count": 3,
+          "source_urls": [
+            "https://www.transitchicago.com/airports/"
+          ]
+        },
+        {
+          "phase": "researching",
+          "reviewed": true,
+          "research_count": 4,
+          "unresolved_count": 3,
+          "source_urls": [
+            "https://www.transitchicago.com/airports/"
+          ]
+        },
+        {
+          "phase": "researching",
+          "reviewed": true,
+          "research_count": 4,
+          "unresolved_count": 3,
+          "source_urls": [
+            "https://www.transitchicago.com/airports/"
+          ]
+        },
+        {
+          "phase": "blocked",
+          "reviewed": true,
+          "research_count": 4,
+          "unresolved_count": 4,
+          "source_urls": [
+            "https://www.transitchicago.com/airports/"
+          ]
+        }
+      ],
+      "children": [
+        {
+          "run_id": "0f948f7b-c62c-462c-a393-2420caac6e30",
+          "session_key": "agent:travel-researcher:subagent:88280648-db95-47cc-8481-7aba55221317",
+          "outcome": {
+            "status": "timeout"
+          },
+          "duration_ms": 1022,
+          "tools": [
+            "web_fetch"
+          ]
+        }
+      ],
+      "tool_errors": 0,
+      "flight_display_verbatim": false,
+      "final_text_sha256": "691e94b61c568b5e21779d28f3df260f2ff9c8182f5ece5a77f5077058ef6401",
+      "trip_ids": [
+        "trip_2ec6cc80f9b8"
+      ],
+      "search_states": [],
+      "preferences_read": []
+    }
+  ],
+  "final_checkpoints": [
+    {
+      "trip_id": "trip_4bd512d05208",
+      "phase": "researching",
+      "research_count": 0,
+      "unresolved_count": 0
+    },
+    {
+      "trip_id": "trip_de5d4e608919",
+      "phase": "blocked",
+      "research_count": 0,
+      "unresolved_count": 1
+    },
+    {
+      "trip_id": "trip_2ec6cc80f9b8",
+      "phase": "blocked",
+      "research_count": 4,
+      "unresolved_count": 4
+    }
+  ],
+  "trips": [
+    {
+      "trip_id": "trip_b5eb339e7a76",
+      "user_id": "evaluation-demo",
+      "origin": "BOS",
+      "destination": "ORD",
+      "state": "OPTIONS_READY"
+    },
+    {
+      "trip_id": "trip_4bd512d05208",
+      "user_id": "evaluation-revised",
+      "origin": "BOS",
+      "destination": "ORD",
+      "state": "OPTIONS_READY"
+    },
+    {
+      "trip_id": "trip_de5d4e608919",
+      "user_id": "evaluation-final",
+      "origin": "BOS",
+      "destination": "ORD",
+      "state": "SEARCH_FAILED"
+    },
+    {
+      "trip_id": "trip_91003acad0ce",
+      "user_id": "[non-evaluation identity]",
+      "origin": null,
+      "destination": "JFK",
+      "state": "NEEDS_INFORMATION"
+    },
+    {
+      "trip_id": "trip_2ec6cc80f9b8",
+      "user_id": "evaluation-final",
+      "origin": "BOS",
+      "destination": "ORD",
+      "state": "SEARCH_FAILED"
+    },
+    {
+      "trip_id": "trip_8bbee9f4cbb2",
+      "user_id": "evaluation-final",
+      "origin": "BOS",
+      "destination": "JFK",
+      "state": "READY_TO_SEARCH"
+    }
+  ],
+  "verified_checks": {
+    "delegation_and_research_persisted": true,
+    "memory_retrieved_after_restart": true,
+    "refinement_without_search": true,
+    "provider_failure_preserves_research": true,
+    "timeout_recovery_preserves_research": true
+  },
+  "fixture_note": "Before timeout-retained, four existing synthetic findings were restored from a prior tool-result snapshot to reproduce the retention regression. This setup is not model behavior."
+}

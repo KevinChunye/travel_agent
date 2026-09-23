@@ -1,6 +1,6 @@
 #!/bin/sh
 # One-shot setup/repair for the travel-agent on a Maritime OpenClaw container.
-# Idempotent: safe to re-run after restarts, git updates, or fresh agents.
+# Stop the gateway first. Re-run after git updates or on fresh agents.
 # Usage (in the agent's Console tab):  sh /data/travel_agent/deploy/maritime_setup.sh
 # Fresh container without the repo yet:
 #   git clone https://github.com/KevinChunye/travel_agent /data/travel_agent && sh /data/travel_agent/deploy/maritime_setup.sh
@@ -38,7 +38,7 @@ done
 
 # 1. Code: clone or update.
 if [ -d "$REPO/.git" ]; then
-    git -C "$REPO" pull --ff-only || echo "(git pull failed; continuing with existing checkout)"
+    git -C "$REPO" pull --ff-only
 else
     git clone https://github.com/KevinChunye/travel_agent "$REPO"
 fi
@@ -65,18 +65,10 @@ for d in /data/.openclaw/workspace/skills /data/.openclaw/skills; do
     echo "skill installed -> $d/travel-agent"
 done
 
-# 6. Keep the agent-reachable workspace copy in sync (used when the agent's
-# exec runs with TRAVEL_AGENT_HOME pointing into the workspace). The live
-# database under data/ is preserved.
+# 6. Update only tracked code. Never delete the workspace or copy a live DB.
+# Stop the gateway before running setup; this is not a release-wide atomic swap.
 if [ -d "$WSCOPY" ]; then
-    mkdir -p /tmp/ta-db-backup
-    [ -d "$WSCOPY/data" ] && cp -r "$WSCOPY/data" /tmp/ta-db-backup/
-    rm -rf "$WSCOPY"
-    cp -r "$REPO" "$WSCOPY"
-    [ -d /tmp/ta-db-backup/data ] && rm -rf "$WSCOPY/data" \
-        && cp -r /tmp/ta-db-backup/data "$WSCOPY/data"
-    rm -rf /tmp/ta-db-backup
-    echo "workspace copy refreshed -> $WSCOPY (database preserved)"
+    python3 "$REPO/scripts/sync_workspace.py" "$REPO" "$WSCOPY"
 fi
 
 # 7. Re-lock code and skill files so the agent cannot modify them.

@@ -29,6 +29,11 @@ class RedEyePreference(str, Enum):
 
 class UserPreferences(BaseModel):
     user_id: str
+    dietary_preferences: list[str] = Field(default_factory=list)
+    hotel_max_nightly: Optional[float] = Field(default=None, gt=0)
+    hotel_min_rating: Optional[float] = Field(default=None, ge=0, le=5)
+    accessibility_needs: list[str] = Field(default_factory=list)
+    interests: list[str] = Field(default_factory=list)
     home_city: Optional[str] = None
     home_airport: Optional[str] = None
     preferred_airports: list[str] = Field(default_factory=list)
