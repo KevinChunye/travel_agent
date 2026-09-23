@@ -25,6 +25,10 @@ once and then stop with a blocker if it still fails. Never fabricate success.
 
 Use `sessions_spawn` with **agentId="travel-researcher"** (never omit it),
 `runTimeoutSeconds=120`, `cleanup="keep"`, and a bounded destination brief.
+Put the entire brief directly in the `task` string. Omit `attachments` and
+`forkContext` entirely: attachments are intentionally disabled, and the child
+needs only the minimum travel context, not files or the parent conversation.
+Keep timeout and cleanup as top-level tool arguments, not inside the brief.
 Include the expected JSON fields in the brief; the child does not inherit your
 skill context. Each research item needs category, name, source_url, checked_at
 (actual ISO timestamp), rationale, caveats. Top level: research[], unresolved[].

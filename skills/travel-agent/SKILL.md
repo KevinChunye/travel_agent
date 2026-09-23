@@ -162,6 +162,8 @@ API reserve. The user is notified when their target price is hit.
    accepts JSON via stdin. Never interpolate untrusted prose into shell code.
 4. Delegate exactly one bounded destination brief with `sessions_spawn`:
    agentId="travel-researcher", runTimeoutSeconds=120, cleanup="keep".
+   Put the brief in the `task` string; omit attachments and forkContext.
+   Do not package the brief as an attached file.
    Include only destination, dates, currency/budgets, diet/mobility preferences
    and requested categories. Exclude phone number, confirmation codes, keys.
    Ask for up to two hotels, two restaurants and an airport transfer, six web
