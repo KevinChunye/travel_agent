@@ -57,7 +57,7 @@ WhatsApp → OpenClaw agent → skills/travel-agent/SKILL.md → python -m src.c
 
 ```bash
 pip install -r requirements.txt pytest
-python -m pytest                       # 94 tests; SerpAPI fully mocked
+python -m pytest                       # SerpAPI fully mocked
 
 export TRAVEL_PROVIDERS=mock           # offline demo (google_flights for live)
 python -m src.cli new-trip --user demo --request-json \
@@ -95,8 +95,10 @@ layers enforce that:
 - **Enforcement**: `deploy/maritime_setup.sh` marks every code and
   skill file immutable (`chattr +i`, falling back to `chmod a-w`) after
   installing, so the agent's write tools fail on them; only `data/`
-  stays writable. The setup script unlocks, updates from git, and
-  re-locks — re-run it to ship changes.
+  stays writable. The `chmod` fallback does not stop a root process,
+  and setup warns when it is all that is available. The setup script
+  unlocks, reverts (and saves) any in-container edits, updates from
+  git, and re-locks — even when a step fails. Re-run it to ship changes.
 
 ## Layout
 

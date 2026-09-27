@@ -86,9 +86,16 @@ verify a blocked checkpoint plus a partial answer; do not fabricate a timeout.
 For live flight failure, use a test deployment with the search key absent and
 verify no mock fares or automatic paid retry are substituted.
 
-Scheduled `monitor-run` returns notification payloads. Connect and test an
-acknowledged transport separately before advertising delivered WhatsApp alerts.
-This revision does not deploy or send messages to contacts automatically.
+Scheduled `monitor-run` returns notification payloads: `notifications` (each with
+`user_id`, `kind` and `text`) and a combined `display_text`, covering departure and
+check-in reminders as well as price alerts. Reminder times are converted from the
+origin airport's local time to UTC. Connect and test an acknowledged transport
+separately before advertising delivered WhatsApp alerts. Maritime sleeps idle
+agents; confirm scheduled runs still fire before relying on them. This revision
+does not deploy or send messages to contacts automatically.
+
+The optional dashboard binds to `127.0.0.1` by default because it lists trips and
+confirmation codes. Pass `--host 0.0.0.0` only behind authentication.
 
 For opt-in live tests, see [live evaluation](live-evaluation.md).
 
@@ -121,10 +128,19 @@ Back up the database with SQLite's backup API before a production upgrade.
 Keep the previous configuration privately for rollback, then activate the
 validated proposal and restart using the host's normal gateway controls.
 
-Maritime's template deployment does not upload uncommitted local repository
-changes. Publish the reviewed branch or explicitly transfer the release before
-running setup. Existing secrets in Maritime are not proof that the provider key
-or configured base URL is usable. Verify both without logging their values.
+`maritime deploy` uploads no local files: it redeploys the template (and your
+`maritime.json` instructions). Code reaches the container only through the
+setup script's `git clone`/`git pull`, which follows the GitHub **default
+branch**. Merge the reviewed branch into the default branch, or run setup with
+`TRAVEL_AGENT_BRANCH=<branch>`; setup prints the deployed `code: <branch> @
+<commit>` line, so check it. If tracked files were edited inside the container,
+setup saves the diff under `data/local-changes-*.patch` and restores the
+committed code before pulling. A failed pull or failing tests stop setup, and
+the files are re-locked either way. If setup warns that `chattr +i` is
+unavailable, the `chmod a-w` fallback does not stop an agent running as root;
+the OpenClaw tool allowlist (no write/edit tools) is then the main protection.
+Existing secrets in Maritime are not proof that the provider key or configured
+base URL is usable. Verify both without logging their values.
 
 ## Maritime OpenClaw 2026.7.1 runtime
 

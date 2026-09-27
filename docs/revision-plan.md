@@ -2,7 +2,7 @@
 
 Baseline: see `evidence/baseline-commit.txt`; The initial stale checkout passed 109 tests; upstream had four newer commits.
 The revision was integrated onto upstream b505c16 before final validation.
-The discovered checkout was `/Users/haochuanwang/Desktop/Projects/travel_agent`.
+The discovered checkout was the developer's local macOS clone.
 Existing `.gitignore` and `maritime.json` edits were preserved.
 
 ## Existing behavior
