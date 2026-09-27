@@ -6,6 +6,12 @@ constraints, ranking, persistence, and the SerpAPI search budget. Every
 command prints a single JSON object on stdout (and mirrors it to
 ``data/last_response.json`` for exec environments that swallow stdout).
 
+Reliability contract: every response carries ``command``, ``argv`` and
+``generated_at``. Failures of any kind (usage errors, illegal state
+changes, unexpected exceptions) still produce ``{"ok": false, ...}`` JSON,
+and a command that dies before answering leaves a ``status: incomplete``
+record in the fallback file, never the previous command's output.
+
 Payment safety: this agent never purchases tickets and never collects
 card or passport data. ``link`` hands the user a Google Flights booking
 URL; the user buys on the airline site and reports back with ``booked``.
@@ -17,8 +23,10 @@ import argparse
 import json
 import os
 import sys
+import traceback
 from datetime import datetime, timezone
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional
 
 from pydantic import ValidationError
 
@@ -29,31 +37,78 @@ from src.models.travel_request import TravelRequest
 from src.services import state as sm
 from src.services.handoff import HandoffService
 from src.services.monitoring import MonitoringService
-from src.services.price_watch import PriceWatchService
-from src.services.search import SearchService, format_options
+from src.services.price_watch import PriceWatchService, eligible_offers
+from src.services.search import SearchService, format_options, is_demo_outcome
 from src.services.search_budget import BudgetConfig, SearchBudgetManager
 from src.storage.repository import SQLiteRepository
 
 
-def _out(payload: dict[str, Any]) -> None:
-    text = json.dumps(payload, default=str, indent=2)
-    print(text)
+#: The command being run, stamped onto every response (set by main()).
+_CONTEXT: dict[str, Any] = {"command": None, "argv": []}
+
+
+def _stamp(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **payload,
+        "command": _CONTEXT["command"],
+        "argv": _CONTEXT["argv"],
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _persist(text: str) -> None:
     # Belt-and-braces for exec environments that swallow stdout (seen with
     # sandboxed agent shells): every response is also written to a file the
     # caller can `cat` afterwards.
     try:
-        from pathlib import Path
-
         out = Path(os.environ.get("TRAVEL_AGENT_HOME", ".")) / "data"
         out.mkdir(parents=True, exist_ok=True)
-        (out / "last_response.json").write_text(text)
+        tmp = out / f"last_response.json.{os.getpid()}.tmp"
+        tmp.write_text(text)
+        tmp.replace(out / "last_response.json")
     except OSError:
         pass
 
 
-def _fail(message: str, **extra: Any) -> None:
+def _out(payload: dict[str, Any]) -> None:
+    text = json.dumps(_stamp(payload), default=str, indent=2)
+    print(text)
+    _persist(text)
+
+
+def _fail(message: str, exit_code: int = 1, **extra: Any) -> None:
     _out({"ok": False, "error": message, **extra})
-    sys.exit(1)
+    sys.exit(exit_code)
+
+
+def _begin(argv: list[str]) -> None:
+    """Record the command and replace the fallback file with an
+    'incomplete' marker, so a crash can never leave the previous command's
+    result looking like this command's answer."""
+    _CONTEXT["command"] = argv[0] if argv else None
+    _CONTEXT["argv"] = list(argv)
+    _persist(json.dumps(_stamp({
+        "ok": False,
+        "status": "incomplete",
+        "error": "The command started but did not finish, so no result was "
+                 "recorded. Do not reuse earlier results.",
+    }), indent=2))
+
+
+class CLIUsageError(SystemExit):
+    """Bad command-line usage. Still a SystemExit (code 2) for callers that
+    expect argparse semantics, but carries the message so main() can report
+    it as JSON."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(2)
+        self.message = message
+
+
+class _Parser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:  # type: ignore[override]
+        self.print_usage(sys.stderr)
+        raise CLIUsageError(f"{self.prog}: {message}")
 
 
 def _load_json_arg(value: str) -> dict:
@@ -145,18 +200,23 @@ def cmd_search(app: App, args: argparse.Namespace) -> None:
             "Trip is missing required fields",
             missing_fields=trip.request.missing_required_fields(),
         )
-    outcome = app.search.search(trip)
+    try:
+        outcome = app.search.search(trip)
+    except sm.InvalidTransition as exc:
+        _fail(f"Cannot search this trip now: {exc}", state=trip.state.value)
     _out(
         {
             "ok": True,
             "trip_id": trip.id,
             "state": trip.state.value,
             "display_text": format_options(outcome, app.repo),
+            "demo_data": is_demo_outcome(outcome),
             "options": [
                 {
                     "index": i + 1,
                     "label": opt.label,
                     "offer_id": opt.ranked.offer.id,
+                    "provider": opt.ranked.offer.provider,
                     "utility": opt.ranked.utility,
                     "scores": opt.ranked.scores(),
                     "explanation": opt.ranked.explanation,
@@ -175,6 +235,8 @@ def cmd_refine(app: App, args: argparse.Namespace) -> None:
     trip = app._get_trip(args.trip)
     try:
         outcome = app.search.refine(trip, args.command)
+    except sm.InvalidTransition as exc:
+        _fail(f"Cannot refine this trip now: {exc}", state=trip.state.value)
     except ValueError as exc:
         _fail(str(exc))
     _out(
@@ -183,6 +245,7 @@ def cmd_refine(app: App, args: argparse.Namespace) -> None:
             "trip_id": trip.id,
             "state": trip.state.value,
             "display_text": format_options(outcome, app.repo),
+            "demo_data": is_demo_outcome(outcome),
         }
     )
 
@@ -265,12 +328,18 @@ def cmd_prefs_set(app: App, args: argparse.Namespace) -> None:
 def cmd_monitor_run(app: App, args: argparse.Namespace) -> None:
     now = datetime.now(timezone.utc)
     changes = app.monitoring.run_due(now)
-    notifications = app.watches.run_due(now)
+    watch_notes = app.watches.run_due(now)
+    # Everything that should reach the user, reminders included. Nothing is
+    # delivered by this command: the scheduler/agent relays display_text.
+    notifications = app.monitoring.outbox + app.watches.outbox
     _out(
         {
             "ok": True,
+            "notification_count": len(notifications),
+            "notifications": notifications,
+            "display_text": "\n\n".join(n["text"] for n in notifications),
             "changes": [c.model_dump(mode="json") for c in changes],
-            "watch_notifications": notifications,
+            "watch_notifications": watch_notes,
         }
     )
 
@@ -288,10 +357,31 @@ def cmd_link(app: App, args: argparse.Namespace) -> None:
 
 def cmd_booked(app: App, args: argparse.Namespace) -> None:
     trip = app._get_trip(args.trip)
-    details = _load_json_arg(args.details) if args.details else {}
+    existing = app.repo.get_booked_trip(trip.booking_id) if trip.booking_id else None
+    if existing is not None:
+        # Idempotent: saying "booked" twice must not create a second trip.
+        _out(
+            {
+                "ok": True,
+                "already_booked": True,
+                "trip_id": trip.id,
+                "state": trip.state.value,
+                "booked_trip": existing.model_dump(mode="json"),
+            }
+        )
+        return
     try:
+        details = _load_json_arg(args.details) if args.details else {}
+    except json.JSONDecodeError as exc:
+        _fail(f"Invalid --details JSON: {exc}")
+    if not isinstance(details, dict):
+        _fail("--details must be a JSON object")
+    try:
+        if args.option:
+            # Booked straight from the search results: record which one.
+            app.search.select_option(trip, args.option)
         booked = app.handoff.mark_booked(trip, details)
-    except sm.InvalidTransition as exc:
+    except (ValueError, sm.InvalidTransition) as exc:
         _fail(str(exc), state=trip.state.value)
     app.monitoring.create_tasks_for_trip(booked)
     _out(
@@ -308,17 +398,31 @@ def cmd_booked(app: App, args: argparse.Namespace) -> None:
 
 def cmd_track(app: App, args: argparse.Namespace) -> None:
     trip = app._get_trip(args.trip)
-    # Initial price from the named presented option, else the cheapest
-    # stored offer (no selection flow, no API call).
+    # A named option tracks that exact flight. Otherwise the watch tracks
+    # the cheapest fare meeting the trip's requirements, and its initial
+    # price is measured the same way (no API call either way).
     initial = None
     offer = None
-    if args.option and args.option.isdigit():
-        idx = int(args.option) - 1
-        if 0 <= idx < len(trip.presented_offer_ids):
-            offer = app.repo.get_offer(trip.presented_offer_ids[idx])
-    if offer is None:
-        offers = app.repo.get_offers_for_trip(trip.id)
-        offer = min(offers, key=lambda o: o.total_price) if offers else None
+    itinerary_id: Optional[str] = None
+    if args.option:
+        token = args.option.strip()
+        if token.isdigit():
+            idx = int(token) - 1
+            if 0 <= idx < len(trip.presented_offer_ids):
+                offer = app.repo.get_offer(trip.presented_offer_ids[idx])
+        else:
+            offer = app.repo.get_offer(token)
+        if offer is None:
+            _fail(
+                f"Option {token} does not exist; "
+                f"{len(trip.presented_offer_ids)} option(s) were presented"
+            )
+        itinerary_id = offer.itinerary_fingerprint()
+    else:
+        eligible = eligible_offers(
+            trip.request, app.repo.get_offers_for_trip(trip.id)
+        )
+        offer = min(eligible, key=lambda o: o.total_price) if eligible else None
     if offer is not None:
         initial = float(offer.total_price)
     watch = app.watches.create_watch(
@@ -327,6 +431,7 @@ def cmd_track(app: App, args: argparse.Namespace) -> None:
         trip_id=trip.id,
         target_price=args.target,
         initial_price=initial,
+        itinerary_id=itinerary_id,
     )
     if trip.state in (TripState.OPTIONS_READY, TripState.OPTION_SELECTED,
                       TripState.AWAITING_USER_BOOKING):
@@ -335,6 +440,8 @@ def cmd_track(app: App, args: argparse.Namespace) -> None:
         {
             "ok": True,
             "watch_id": watch.id,
+            "tracking": "selected flight" if itinerary_id
+            else "cheapest fare matching the trip's requirements",
             "trip_state": trip.state.value,
             "initial_price": watch.initial_price,
             "target_price": watch.target_price,
@@ -435,7 +542,7 @@ def cmd_chart(app: App, args: argparse.Namespace) -> None:
 def cmd_dashboard(app: App, args: argparse.Namespace) -> None:
     from src.services.dashboard import serve
 
-    serve(app.repo, app.budget, port=args.port)
+    serve(app.repo, app.budget, port=args.port, host=args.host)
 
 
 def cmd_checkpoint(app: App, args: argparse.Namespace) -> None:
@@ -454,7 +561,7 @@ def cmd_checkpoint(app: App, args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="travel-agent")
+    p = _Parser(prog="travel-agent")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     def add(name, fn, *specs):
@@ -494,6 +601,9 @@ def build_parser() -> argparse.ArgumentParser:
     add("link", cmd_link, ("--trip", {"required": True}))
     add("booked", cmd_booked,
         ("--trip", {"required": True}),
+        ("--option", {"default": None,
+                      "help": "presented option number that was booked "
+                              "(when booked straight from the search results)"}),
         ("--details", {"default": None,
                        "help": "JSON: confirmation_code, flight_number, ..."}))
     # Price watches / budget / charts / dashboard
@@ -519,17 +629,38 @@ def build_parser() -> argparse.ArgumentParser:
         ("--route", {"default": None, "help": "airport code, e.g. LAX"}),
         ("--out", {"default": None}))
     add("dashboard", cmd_dashboard,
-        ("--port", {"type": int, "default": 8090}))
+        ("--port", {"type": int, "default": 8090}),
+        ("--host", {"default": "127.0.0.1",
+                    "help": "bind address; the page shows confirmation codes, "
+                            "so expose it (0.0.0.0) only behind auth"}))
     return p
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = build_parser().parse_args(argv)
-    app = App()
+    argv = list(sys.argv[1:] if argv is None else argv)
+    _begin(argv)
     try:
+        args = build_parser().parse_args(argv)
+    except CLIUsageError as exc:
+        _fail(f"Invalid command usage: {exc.message}", exit_code=2,
+              hint="Run `python3 -m src.cli <command> --help` for the exact flags.")
+    except SystemExit as exc:
+        if exc.code in (0, None):  # --help printed usage to stdout
+            _persist(json.dumps(_stamp({"ok": True, "status": "help printed"})))
+        raise
+    app: Optional[App] = None
+    try:
+        app = App()
         args.fn(app, args)
+    except SystemExit:
+        raise
+    except Exception as exc:  # noqa: BLE001 - last line of defence
+        traceback.print_exc(file=sys.stderr)
+        _fail(f"Unexpected error in {_CONTEXT['command']}: "
+              f"{type(exc).__name__}: {exc}")
     finally:
-        app.repo.close()
+        if app is not None:
+            app.repo.close()
 
 
 if __name__ == "__main__":

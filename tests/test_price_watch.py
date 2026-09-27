@@ -158,3 +158,79 @@ def test_stop_watch_and_find_by_code(repo, budget, channel):
     svc.stop_watch(watch.id)
     assert repo.get_watch(watch.id).active is False
     assert svc.find_watch("u1", "LAX") is None
+
+
+# -- what a watch compares ---------------------------------------------------
+
+from src.models.travel_request import HardConstraints  # noqa: E402
+
+
+class ListProvider:
+    """Returns a fixed list of offers built for the watched date."""
+
+    name = "google_flights"
+
+    def __init__(self, specs):
+        self.specs = specs  # [(price, dep_hour), ...]
+
+    def search_with_options(self, request, *, category=None, force_refresh=False,
+                            trip_id=None):
+        return [make_offer(price=p, dep_hour=h, day=request.outbound_date.start)
+                for p, h in self.specs]
+
+
+def _due_now(repo, watch):
+    watch.next_check_at = NOW - timedelta(hours=1)
+    repo.save_watch(watch)
+
+
+def test_best_fare_respects_hard_constraints(repo, budget, channel):
+    request = make_watch_request(45)
+    request.constraints = HardConstraints(no_red_eye=True)
+    provider = ListProvider([("380", 9), ("299", 23)])  # 23:00 is a red-eye
+    svc = make_service(repo, budget, channel, provider)
+    watch = svc.create_watch("u1", request, target_price=320, initial_price=380)
+    _due_now(repo, watch)
+    assert svc.run_due(NOW) == []
+    assert repo.get_watch(watch.id).latest_price == 380
+
+
+def test_price_cap_does_not_hide_observations(repo, budget, channel):
+    request = make_watch_request(45)
+    request.constraints = HardConstraints(max_price=300)
+    svc = make_service(repo, budget, channel, ListProvider([("350", 9)]))
+    watch = svc.create_watch("u1", request, target_price=300)
+    _due_now(repo, watch)
+    svc.run_due(NOW)
+    assert repo.get_watch(watch.id).latest_price == 350
+
+
+def test_tracked_flight_ignores_cheaper_other_flights(repo, budget, channel):
+    picked = make_offer(price="380", dep_hour=9, day=make_watch_request(45).outbound_date.start)
+    provider = ListProvider([("380", 9), ("299", 14)])
+    svc = make_service(repo, budget, channel, provider)
+    watch = svc.create_watch("u1", make_watch_request(45), target_price=320,
+                             initial_price=380,
+                             itinerary_id=picked.itinerary_fingerprint())
+    _due_now(repo, watch)
+    assert svc.run_due(NOW) == []  # the other flight's $299 is irrelevant
+    assert repo.get_watch(watch.id).latest_price == 380
+
+    provider.specs = [("310", 9), ("299", 14)]  # the picked flight drops
+    _due_now(repo, repo.get_watch(watch.id))
+    notes = svc.run_due(NOW)
+    assert len(notes) == 1 and "$310" in notes[0] and "tracked" in notes[0]
+
+
+def test_tracked_flight_disappearing_is_reported_once(repo, budget, channel):
+    picked = make_offer(price="380", dep_hour=9, day=make_watch_request(45).outbound_date.start)
+    provider = ListProvider([("250", 14)])
+    svc = make_service(repo, budget, channel, provider)
+    watch = svc.create_watch("u1", make_watch_request(45), target_price=320,
+                             itinerary_id=picked.itinerary_fingerprint())
+    _due_now(repo, watch)
+    notes = svc.run_due(NOW)
+    assert len(notes) == 1 and "no longer appears" in notes[0]
+    _due_now(repo, repo.get_watch(watch.id))
+    assert svc.run_due(NOW) == []  # not repeated
+    assert repo.get_watch(watch.id).latest_price is None  # $250 not recorded

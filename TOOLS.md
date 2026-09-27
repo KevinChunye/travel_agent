@@ -12,12 +12,18 @@ python3 -m src.cli search --trip TRIP_ID
 python3 -m src.cli refine --trip TRIP_ID --command cheaper
 python3 -m src.cli status --trip TRIP_ID
 python3 -m src.cli checkpoint --trip TRIP_ID
+python3 -m src.cli booked --trip TRIP_ID --option 1 --details '{"confirmation_code":"ABC123"}'
+python3 -m src.cli track --trip TRIP_ID --option 1 --target 350
+python3 -m src.cli monitor-run
 python3 -m src.cli checkpoint --trip TRIP_ID --json '{"phase":"researching","next_action":"Await researcher","research":[],"reviewed":false,"unresolved":[]}'
 ```
 
 Replace USER_ID and TRIP_ID with actual IDs. Dates require `{ "start": "YYYY-MM-DD" }`.
 There are no `--phase`, `--key`, `--value`, `--from`, or `--to` CLI flags.
 Only claim a preference/checkpoint was saved after that exact command returns `ok: true`.
+Every failure (bad flags included) returns `{"ok": false, "error": ...}` JSON; each
+response names its `argv` and `generated_at`, so check them before trusting
+`data/last_response.json`.
 On syntax errors, read the skill or `python3 -m src.cli COMMAND --help` once; correct
 once and then stop with a blocker if it still fails. Never fabricate success.
 
@@ -49,8 +55,9 @@ On completion, review the actual child content against the user's constraints
 and source(s). An announcement is not proof of a valid checkpoint. Save phase=ready,
 reviewed=true only after verifying the result; otherwise blocked with unresolved.
 Retain the child run ID/session key in next_action for traceability.
-Relay flight display_text verbatim and clearly label mock fares as demonstration
-inventory. Never paraphrase prices/times. A citation alone does not prove that a
+Relay flight display_text verbatim. Mock fares are marked `demo_data: true` and
+carry a `⚠️ DEMO DATA` banner inside display_text; keep it, and never present them
+as real inventory. Never paraphrase prices/times. A citation alone does not prove that a
 hotel or restaurant is available, safe for allergies, or within a future budget.
 
 For any JSON containing names, apostrophes, or prose, use a quoted heredoc:

@@ -6,7 +6,13 @@ by an external scheduler (a Maritime scheduled trigger or cron running
 ``python -m src.cli monitor-run``) — never an in-process timer, so a
 restart or redeploy loses nothing.
 
-Users are only notified when something relevant changes.
+Users are only notified when something relevant changes. Every
+notification is also collected in ``outbox`` so ``monitor-run`` can return
+it: without a connected channel, the caller is responsible for delivery.
+
+Departure times are airport-local (as Google Flights reports them); they
+are converted to UTC with the origin airport's time zone before any
+reminder is scheduled.
 """
 
 from __future__ import annotations
@@ -20,6 +26,7 @@ from src.models.booking import Booking, BookingStatus
 from src.models.monitoring import MonitoringTask, MonitoringTaskKind, TravelChange
 from src.models.travel_request import TransportMode
 from src.providers.base import ProviderError, TravelProvider, TripStatus
+from src.services.timezones import local_to_utc
 from src.storage.repository import Repository
 
 logger = logging.getLogger(__name__)
@@ -40,13 +47,14 @@ class MonitoringService:
         self._repo = repo
         self._channel = channel
         self._clock = clock
+        #: Notifications produced by this service instance, for callers
+        #: (monitor-run) that deliver them. Each: {user_id, kind, text}.
+        self.outbox: list[dict] = []
 
     # -- task creation --------------------------------------------------------
 
     def create_tasks_for_booking(self, booking: Booking) -> list[MonitoringTask]:
-        dep = booking.offer.departure
-        if dep.tzinfo is None:
-            dep = dep.replace(tzinfo=timezone.utc)
+        dep = local_to_utc(booking.offer.departure, booking.offer.origin)
         tasks = [
             MonitoringTask(
                 booking_id=booking.id,
@@ -89,9 +97,7 @@ class MonitoringService:
         """
         if trip.departure is None:
             return []
-        dep = trip.departure
-        if dep.tzinfo is None:
-            dep = dep.replace(tzinfo=timezone.utc)
+        dep = local_to_utc(trip.departure, trip.origin)
         tasks = [
             MonitoringTask(
                 booking_id=trip.id,
@@ -131,7 +137,10 @@ class MonitoringService:
                     task.active = False
                     self._repo.save_monitoring_task(task)
                     continue
-                if task.kind != MonitoringTaskKind.STATUS_CHECK:
+                departed = now >= local_to_utc(trip.departure, trip.origin)
+                if task.kind != MonitoringTaskKind.STATUS_CHECK and not departed:
+                    # A run that happens after departure (e.g. the host was
+                    # asleep) retires the reminder instead of sending it late.
                     ref = trip.confirmation_code or trip.flight_number or trip.id
                     self._notify(
                         task.user_id,
@@ -143,6 +152,7 @@ class MonitoringService:
                             if task.kind == MonitoringTaskKind.CHECK_IN_REMINDER
                             else ""
                         ),
+                        kind=task.kind.value,
                     )
                 task.active = False
                 self._repo.save_monitoring_task(task)
@@ -164,9 +174,7 @@ class MonitoringService:
         return changes
 
     def _reschedule(self, task: MonitoringTask, booking: Booking, now: datetime) -> None:
-        dep = booking.offer.departure
-        if dep.tzinfo is None:
-            dep = dep.replace(tzinfo=timezone.utc)
+        dep = local_to_utc(booking.offer.departure, booking.offer.origin)
         if task.recur_minutes and now < dep:
             task.due_at = now + timedelta(minutes=task.recur_minutes)
         else:
@@ -193,7 +201,7 @@ class MonitoringService:
             elif change.kind in ("schedule_change", "delay"):
                 booking.status = BookingStatus.CHANGED
             self._repo.save_booking(booking)
-            self._notify(booking.user_id, change.summary)
+            self._notify(booking.user_id, change.summary, kind=change.kind)
         return change
 
     def _diff(self, old: dict, new: dict, booking: Booking) -> Optional[TravelChange]:
@@ -246,9 +254,10 @@ class MonitoringService:
                 f"Reminder: {ref} departs {o.departure:%a %b %d at %H:%M} "
                 f"from {o.origin}."
             )
-        self._notify(task.user_id, text)
+        self._notify(task.user_id, text, kind=task.kind.value)
 
-    def _notify(self, user_id: str, text: str) -> None:
+    def _notify(self, user_id: str, text: str, kind: str = "notice") -> None:
+        self.outbox.append({"user_id": user_id, "kind": kind, "text": text})
         if self._channel is not None:
             self._channel.send_notification(user_id, text)
         else:

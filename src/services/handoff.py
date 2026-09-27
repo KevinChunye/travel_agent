@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from src.models.booking import Trip, TripState
 from src.models.offer import Offer
 from src.models.trip import BookedTrip
+from src.providers.mock import DEMO_NOTICE, is_demo_offer
 from src.services import state as sm
 from src.storage.repository import Repository
 
@@ -45,12 +46,13 @@ class HandoffService:
         if offer is None:
             raise ValueError("Selected offer not found in storage")
 
+        demo = f"{DEMO_NOTICE}\n" if is_demo_offer(offer) else ""
         if not offer.booking_url:
             sm.transition(self._repo, trip, TripState.BOOKING_LINK_UNAVAILABLE)
             return HandoffResult(
                 trip_id=trip.id,
                 state=trip.state.value,
-                display_text=(
+                display_text=demo + (
                     "No booking link is available for this result. Search the "
                     f"itinerary ({offer.carrier_name or offer.carrier} "
                     f"{offer.origin}→{offer.destination}, "
@@ -62,7 +64,7 @@ class HandoffService:
         sm.transition(self._repo, trip, TripState.BOOKING_LINK_READY)
         sm.transition(self._repo, trip, TripState.AWAITING_USER_BOOKING)
         dur_h, dur_m = divmod(offer.duration_minutes, 60)
-        text = (
+        text = demo + (
             f"Your pick: {offer.carrier_name or offer.carrier} "
             f"{offer.origin}→{offer.destination}, "
             f"{offer.departure:%a %b %d %H:%M} → {offer.arrival:%H:%M} "
@@ -84,15 +86,30 @@ class HandoffService:
     def mark_booked(
         self, trip: Trip, details: Optional[dict[str, Any]] = None
     ) -> BookedTrip:
-        """AWAITING_USER_BOOKING -> TRIP_CONFIRMED. Creates a BookedTrip
-        from the selected offer plus user-supplied details (confirmation
-        code, corrected flight/times). Never payment data."""
+        """-> TRIP_CONFIRMED -> MONITORING. Creates a BookedTrip from the
+        selected offer plus user-supplied details (confirmation code,
+        corrected flight/times). Never payment data.
+
+        Everything is validated before anything is written, so a refused
+        call leaves no half-saved trip behind.
+        """
         details = dict(details or {})
+        if trip.booking_id:
+            raise ValueError(f"Trip {trip.id} is already booked ({trip.booking_id})")
         offer: Optional[Offer] = (
             self._repo.get_offer(trip.selected_offer_id)
             if trip.selected_offer_id
             else None
         )
+        if offer is None and not details.get("departure"):
+            raise ValueError(
+                "Which option was booked? Pass --option <n> (the number from "
+                "the search results) or a departure time in --details."
+            )
+        # TRIP_CONFIRMED -> MONITORING is always legal, so this one check
+        # guarantees both transitions below succeed.
+        if not sm.can_transition(trip.state, TripState.TRIP_CONFIRMED):
+            raise sm.InvalidTransition(trip.state, TripState.TRIP_CONFIRMED)
         first_number = None
         if offer and offer.segments and offer.segments[0].number:
             first_number = offer.segments[0].number

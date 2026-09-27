@@ -31,7 +31,9 @@ python -m src.cli search --trip <trip_id>
 python -m src.cli refine --trip <trip_id> --command cheaper
 ```
 
-Mock fares are demonstration data. For live flight search, set
+Mock fares are demonstration data, labelled `DEMO DATA` in every result, and are
+used only when `TRAVEL_PROVIDERS=mock` is set explicitly; with it unset the CLI
+uses live Google Flights and fails without a key. For live flight search, set
 `TRAVEL_PROVIDERS=google_flights` and `SERPAPI_API_KEY` in your environment.
 See [.env.example](.env.example); copying it to `.env` does not load it automatically.
 Search quota and the protected monitoring reserve are configurable.
