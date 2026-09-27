@@ -1,0 +1,18 @@
+{
+  "models": {
+    "providers": {
+      "openai": {
+        "agentRuntime": {
+          "id": "openclaw"
+        }
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "subagents": {
+        "runTimeoutSeconds": 120
+      }
+    }
+  }
+}

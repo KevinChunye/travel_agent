@@ -8,6 +8,11 @@ never skipped past the limit.
 
 Every check records a PriceObservation, building our own price-history
 dataset independent of anything Google returns.
+
+What a watch compares: a watch created for a named option tracks that exact
+itinerary; otherwise it tracks the cheapest fare that still satisfies the
+request's hard constraints (stops, red-eye, time window, bags, ...). The
+price cap is not applied as a filter — the price is what is being watched.
 """
 
 from __future__ import annotations
@@ -16,9 +21,12 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from src.models.offer import Offer
 from src.models.travel_request import TravelRequest
 from src.models.watch import PriceObservation, PriceWatch
 from src.providers.base import ProviderError
+from src.providers.mock import is_demo_offer
+from src.ranking.scorer import apply_hard_constraints
 from src.services.search_budget import (
     SearchBudgetManager,
     SearchCategory,
@@ -34,6 +42,17 @@ ADAPTIVE_INTERVALS = ((60, 5), (30, 3), (14, 2), (3, 1))
 FINAL_CUTOFF_DAYS = 3
 #: When the budget defers a check, retry this much later.
 DEFERRAL = timedelta(days=1)
+
+
+def eligible_offers(
+    request: TravelRequest, offers: list[Offer], now: Optional[datetime] = None
+) -> list[Offer]:
+    """Offers satisfying the request's hard constraints, ignoring the price
+    cap (a watch exists to observe prices above and below it)."""
+    unpriced = request.model_copy(deep=True)
+    unpriced.max_price = None
+    unpriced.constraints.max_price = None
+    return apply_hard_constraints(offers, unpriced, now).kept
 
 
 def adaptive_interval_days(days_to_departure: int) -> Optional[int]:
@@ -60,6 +79,8 @@ class PriceWatchService:
         self._budget = budget
         self._channel = channel
         self._clock = clock
+        #: Notifications produced by this instance: {user_id, kind, text}.
+        self.outbox: list[dict] = []
 
     def _search_provider(self):
         for p in self._providers:
@@ -78,6 +99,7 @@ class PriceWatchService:
         target_price: Optional[float] = None,
         initial_price: Optional[float] = None,
         currency: str = "USD",
+        itinerary_id: Optional[str] = None,
     ) -> PriceWatch:
         now = self._clock()
         watch = PriceWatch(
@@ -87,6 +109,7 @@ class PriceWatchService:
             destination=request.destination or "?",
             request=request,
             search_fingerprint=search_fingerprint(request),
+            itinerary_id=itinerary_id,
             target_price=target_price,
             initial_price=initial_price,
             lowest_price=initial_price,
@@ -102,6 +125,7 @@ class PriceWatchService:
                     observed_at=now,
                     best_price=initial_price,
                     currency=currency,
+                    itinerary_id=itinerary_id,
                     search_fingerprint=watch.search_fingerprint,
                 )
             )
@@ -157,6 +181,7 @@ class PriceWatchService:
                         watch.user_id,
                         f"Fare monitoring for {watch.origin}→{watch.destination} "
                         f"ended (departure within {FINAL_CUTOFF_DAYS} days).",
+                        kind="watch_ended",
                     )
                 )
                 continue
@@ -195,9 +220,25 @@ class PriceWatchService:
         target was reached. Split out for testability."""
         now = now or self._clock()
         note: Optional[str] = None
-        if offers:
-            best = min(offers, key=lambda o: o.total_price)
+        route = f"{watch.origin}→{watch.destination}"
+        if watch.itinerary_id:
+            candidates = [
+                o for o in offers if o.itinerary_fingerprint() == watch.itinerary_id
+            ]
+            if not candidates and offers and not watch.itinerary_missing_notified:
+                watch.itinerary_missing_notified = True
+                note = self._notify(
+                    watch.user_id,
+                    f"The {route} flight you're tracking no longer appears in "
+                    f"search results. Search again to see current options.",
+                    kind="watch_itinerary_missing",
+                )
+        else:
+            candidates = eligible_offers(watch.request, offers, now)
+        if candidates:
+            best = min(candidates, key=lambda o: o.total_price)
             price = float(best.total_price)
+            watch.itinerary_missing_notified = False
             self._repo.record_observation(
                 PriceObservation(
                     watch_id=watch.id,
@@ -217,12 +258,24 @@ class PriceWatchService:
             if watch.target_price is not None:
                 if price <= watch.target_price and not watch.target_notified:
                     watch.target_notified = True
+                    flight = (
+                        f"{best.carrier_name or best.carrier} "
+                        f"{best.departure:%a %b %d %H:%M}"
+                    )
+                    subject = (
+                        f"your tracked {route} flight ({flight})"
+                        if watch.itinerary_id
+                        else f"the best {route} fare matching your "
+                        f"requirements ({flight})"
+                    )
+                    demo = "[DEMO DATA] " if is_demo_offer(best) else ""
                     note = self._notify(
                         watch.user_id,
-                        f"🎯 {watch.origin}→{watch.destination} dropped to "
-                        f"${price:,.0f} — at or below your ${watch.target_price:,.0f} "
-                        f"target. Reply 'chart {watch.origin} {watch.destination}' "
+                        f"{demo}🎯 Price drop: {subject} is now ${price:,.0f} — "
+                        f"at or below your ${watch.target_price:,.0f} target. "
+                        f"Reply 'chart {watch.origin} {watch.destination}' "
                         f"for the history or search again to grab it.",
+                        kind="watch_target",
                     )
                 elif price > watch.target_price:
                     watch.target_notified = False
@@ -232,7 +285,8 @@ class PriceWatchService:
         self._repo.save_watch(watch)
         return note
 
-    def _notify(self, user_id: str, text: str) -> str:
+    def _notify(self, user_id: str, text: str, kind: str = "watch") -> str:
+        self.outbox.append({"user_id": user_id, "kind": kind, "text": text})
         if self._channel is not None:
             self._channel.send_notification(user_id, text)
         else:

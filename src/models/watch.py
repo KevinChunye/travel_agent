@@ -20,6 +20,11 @@ class PriceWatch(BaseModel):
     # Full constraint snapshot so monitoring re-runs the same search.
     request: TravelRequest
     search_fingerprint: str
+    #: Itinerary fingerprint of the specific flight being tracked ("track
+    #: option 1"). None tracks the cheapest fare meeting the request's
+    #: hard constraints.
+    itinerary_id: Optional[str] = None
+    itinerary_missing_notified: bool = False
     target_price: Optional[float] = None
     initial_price: Optional[float] = None
     lowest_price: Optional[float] = None

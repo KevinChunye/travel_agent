@@ -20,6 +20,7 @@ from src.models.offer import Offer
 from src.models.preferences import SelectionFeedback
 from src.models.travel_request import PreferenceWeights
 from src.providers.base import ProviderError, TravelProvider
+from src.providers.mock import DEMO_NOTICE, is_demo_offer
 from src.ranking.scorer import (
     PresentedOption,
     apply_hard_constraints,
@@ -67,14 +68,10 @@ class SearchService:
         *,
         force_refresh: bool = False,
     ) -> SearchOutcome:
-        if trip.state in (TripState.READY_TO_SEARCH, TripState.OPTIONS_READY,
-                          TripState.OFFER_EXPIRED, TripState.NO_RESULTS,
-                          TripState.SEARCH_FAILED, TripState.SEARCH_QUOTA_REACHED,
-                          TripState.AWAITING_USER_BOOKING,
-                          TripState.PRICE_WATCH_ACTIVE):
+        # The state machine is the single source of truth for when a new
+        # search is allowed (e.g. not after the trip is booked).
+        if trip.state != TripState.SEARCHING:
             sm.transition(self._repo, trip, TripState.SEARCHING)
-        elif trip.state != TripState.SEARCHING:
-            raise sm.InvalidTransition(trip.state, TripState.SEARCHING)
 
         offers: list[Offer] = []
         provider_errors: dict[str, str] = {}
@@ -147,6 +144,12 @@ class SearchService:
         """Adjust constraints/weights from a short command and re-rank the
         already-fetched offers. Never triggers a provider/API call — the
         only exception is the explicit ``refresh`` command."""
+        # Validate first so a refused refinement (e.g. on a booked trip)
+        # leaves the trip exactly as it was.
+        if trip.state != TripState.SEARCHING and not sm.can_transition(
+            trip.state, TripState.SEARCHING
+        ):
+            raise sm.InvalidTransition(trip.state, TripState.SEARCHING)
         cmd = command.strip().lower()
         max_options = 3
         under = re.match(r"under\s+\$?(\d+)", cmd)
@@ -189,7 +192,9 @@ class SearchService:
             except ValueError:
                 raise ValueError(f"Unrecognized refinement command: {command!r}")
 
-        if trip.state in (TripState.OPTIONS_READY, TripState.NO_RESULTS):
+        # Go through SEARCHING so both outcomes (options / no results) are
+        # legal from every refinable state.
+        if trip.state != TripState.SEARCHING:
             sm.transition(self._repo, trip, TripState.SEARCHING)
         offers = self._repo.get_offers_for_trip(trip.id)
         outcome = self._rank_and_present(trip, offers, {}, now, max_options=max_options)
@@ -235,8 +240,23 @@ class SearchService:
 
 # -- channel-agnostic presentation ------------------------------------------
 
+def is_demo_outcome(outcome: SearchOutcome) -> bool:
+    return any(is_demo_offer(o.ranked.offer) for o in outcome.options)
+
+
 def format_options(outcome: SearchOutcome, repo: Repository) -> str:
-    """Plain-text option list; the messaging channel decides final styling."""
+    """Plain-text option list; the messaging channel decides final styling.
+
+    Mock (demo) results are bannered at the top and bottom so they can never
+    be relayed as real fares.
+    """
+    text = _format_options(outcome)
+    if is_demo_outcome(outcome):
+        return f"{DEMO_NOTICE}\n{text}\n{DEMO_NOTICE}"
+    return text
+
+
+def _format_options(outcome: SearchOutcome) -> str:
     if not outcome.options:
         if outcome.total_offers == 0 and outcome.provider_errors:
             msgs = "; ".join(outcome.provider_errors.values())

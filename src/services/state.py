@@ -40,12 +40,16 @@ ALLOWED_TRANSITIONS: dict[TripState, set[TripState]] = {
         S.READY_TO_SEARCH,
         S.CANCELLED,
     },
-    # Active flow: select -> booking link -> user books externally.
+    # Active flow: select -> booking link -> user books externally. Users
+    # may also book straight from the search link ("booked" after a pick)
+    # or ask for a fresh search after picking.
     S.OPTION_SELECTED: {
         S.BOOKING_LINK_READY,
         S.BOOKING_LINK_UNAVAILABLE,
         S.PRICE_WATCH_ACTIVE,
         S.OPTIONS_READY,
+        S.SEARCHING,
+        S.TRIP_CONFIRMED,
         S.CANCELLED,
     },
     S.BOOKING_LINK_READY: {
@@ -55,6 +59,7 @@ ALLOWED_TRANSITIONS: dict[TripState, set[TripState]] = {
     },
     S.AWAITING_USER_BOOKING: {
         S.TRIP_CONFIRMED,
+        S.OPTION_SELECTED,  # picked (or booked) a different option
         S.OPTIONS_READY,
         S.PRICE_WATCH_ACTIVE,
         S.SEARCHING,
@@ -80,7 +85,7 @@ ALLOWED_TRANSITIONS: dict[TripState, set[TripState]] = {
     S.SEARCH_QUOTA_REACHED: {S.READY_TO_SEARCH, S.SEARCHING, S.OPTIONS_READY,
                              S.CANCELLED},
     S.BOOKING_LINK_UNAVAILABLE: {S.OPTIONS_READY, S.OPTION_SELECTED,
-                                 S.SEARCHING, S.CANCELLED},
+                                 S.SEARCHING, S.TRIP_CONFIRMED, S.CANCELLED},
     # Exceptional states.
     S.OFFER_EXPIRED: {S.SEARCHING, S.OPTIONS_READY, S.REPRICING, S.CANCELLED},
     S.PRICE_CHANGED: {S.AWAITING_BOOKING_CONFIRMATION, S.OPTIONS_READY,

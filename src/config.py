@@ -1,6 +1,9 @@
 """Configuration from environment variables (no secrets in code or files).
 
-See .env.example for the full list.
+See .env.example for the full list. The flight provider defaults to live
+Google Flights: without ``SERPAPI_API_KEY`` searches fail loudly instead of
+silently serving invented mock fares. Mock data needs an explicit
+``TRAVEL_PROVIDERS=mock``.
 """
 
 from __future__ import annotations
@@ -12,7 +15,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Settings:
     database_path: str = "data/travel_agent.sqlite3"
-    providers: tuple[str, ...] = ("mock",)
+    providers: tuple[str, ...] = ("google_flights",)
     default_currency: str = "USD"
     serpapi_api_key: str | None = None
     serpapi_monthly_limit: int = 250
@@ -24,7 +27,7 @@ class Settings:
     def from_env(cls) -> "Settings":
         providers = tuple(
             p.strip()
-            for p in os.environ.get("TRAVEL_PROVIDERS", "mock").split(",")
+            for p in os.environ.get("TRAVEL_PROVIDERS", "google_flights").split(",")
             if p.strip()
         )
         return cls(

@@ -1,0 +1,84 @@
+{
+  "agents": {
+    "defaults": {
+      "subagents": {
+        "maxConcurrent": 1,
+        "archiveAfterMinutes": 60,
+        "model": "openai/gpt-4.1-mini"
+      },
+      "model": {
+        "primary": "openai/gpt-5.1"
+      },
+      "thinkingDefault": "low"
+    },
+    "list": [
+      {
+        "id": "travel",
+        "default": true,
+        "workspace": "/data/travel_agent",
+        "subagents": {
+          "allowAgents": [
+            "travel-researcher"
+          ]
+        },
+        "tools": {
+          "allow": [
+            "read",
+            "exec",
+            "process",
+            "sessions_spawn",
+            "sessions_history",
+            "session_status",
+            "web_search",
+            "web_fetch"
+          ]
+        }
+      },
+      {
+        "id": "travel-researcher",
+        "workspace": "/data/travel_agent/config/openclaw/researcher",
+        "tools": {
+          "allow": [
+            "web_search",
+            "web_fetch"
+          ],
+          "deny": [
+            "exec",
+            "write",
+            "edit",
+            "message",
+            "sessions_spawn",
+            "gateway",
+            "cron"
+          ]
+        }
+      }
+    ]
+  },
+  "tools": {
+    "subagents": {
+      "tools": {
+        "allow": [
+          "web_search",
+          "web_fetch"
+        ]
+      }
+    },
+    "agentToAgent": {
+      "enabled": true,
+      "allow": [
+        "travel",
+        "travel-researcher"
+      ]
+    }
+  },
+  "session": {
+    "dmScope": "per-channel-peer"
+  },
+  "channels": {
+    "whatsapp": {
+      "dmPolicy": "pairing",
+      "groupPolicy": "disabled"
+    }
+  }
+}

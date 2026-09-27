@@ -1,0 +1,736 @@
+{
+  "kind": "Deterministic CLI evaluation; NOT an LLM/delegation trace",
+  "baseline_commit": "b505c163e5f9427552a14dce7f609fcd0e598f80",
+  "baseline": {
+    "checks": {
+      "memory_changes_behavior": false,
+      "checkpoint_restart": false,
+      "reject_and_recover_child_output": false,
+      "provider_failure_detected": true,
+      "refinement_without_search": true
+    },
+    "trace": [
+      {
+        "command": [
+          "prefs-set",
+          "--user",
+          "evaluation-demo",
+          "--json",
+          "{\"home_airport\":\"BOS\",\"dietary_preferences\":[\"vegetarian\"]}"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "preferences": {
+            "user_id": "evaluation-demo",
+            "home_city": null,
+            "home_airport": "BOS",
+            "preferred_airports": [],
+            "allowed_nearby_airports": [],
+            "preferred_airlines": [],
+            "preferred_rail_services": [],
+            "seat_preference": "no_preference",
+            "cabin_preference": "economy",
+            "default_carry_on": true,
+            "default_checked_bags": 0,
+            "earliest_normal_departure": null,
+            "latest_normal_arrival": null,
+            "red_eye": "avoid",
+            "max_normal_connections": 1,
+            "price_sensitivity": 40.0,
+            "time_sensitivity": 30.0,
+            "convenience_sensitivity": 20.0,
+            "reliability_sensitivity": 10.0
+          }
+        }
+      },
+      {
+        "command": [
+          "new-trip",
+          "--user",
+          "evaluation-demo",
+          "--request-json",
+          "{\"destination\":\"JFK\",\"outbound_date\":{\"start\":\"2027-10-09\"}}"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_1ae876f6974e",
+          "state": "NEEDS_INFORMATION",
+          "missing_fields": [
+            "origin"
+          ]
+        }
+      },
+      {
+        "command": [
+          "prefs-get",
+          "--user",
+          "evaluation-demo"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "preferences": {
+            "user_id": "evaluation-demo",
+            "home_city": null,
+            "home_airport": "BOS",
+            "preferred_airports": [],
+            "allowed_nearby_airports": [],
+            "preferred_airlines": [],
+            "preferred_rail_services": [],
+            "seat_preference": "no_preference",
+            "cabin_preference": "economy",
+            "default_carry_on": true,
+            "default_checked_bags": 0,
+            "earliest_normal_departure": null,
+            "latest_normal_arrival": null,
+            "red_eye": "avoid",
+            "max_normal_connections": 1,
+            "price_sensitivity": 40.0,
+            "time_sensitivity": 30.0,
+            "convenience_sensitivity": 20.0,
+            "reliability_sensitivity": 10.0
+          }
+        }
+      },
+      {
+        "command": [
+          "new-trip",
+          "--user",
+          "evaluation-demo",
+          "--request-json",
+          "{\"origin\":\"BOS\",\"destination\":\"JFK\",\"outbound_date\":{\"start\":\"2027-10-09\"}}"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_1cbe3ed1c424",
+          "state": "READY_TO_SEARCH",
+          "missing_fields": []
+        }
+      },
+      {
+        "command": [
+          "checkpoint",
+          "--trip",
+          "trip_1cbe3ed1c424",
+          "--json",
+          "{\"phase\":\"researching\",\"next_action\":\"Await synthetic child\"}"
+        ],
+        "exit_code": 2,
+        "result": {
+          "error": "command unavailable or invalid",
+          "exit_code": 2
+        }
+      },
+      {
+        "command": [
+          "checkpoint",
+          "--trip",
+          "trip_1cbe3ed1c424"
+        ],
+        "exit_code": 2,
+        "result": {
+          "error": "command unavailable or invalid",
+          "exit_code": 2
+        }
+      },
+      {
+        "command": [
+          "checkpoint",
+          "--trip",
+          "trip_1cbe3ed1c424",
+          "--json",
+          "{\"phase\":\"ready\",\"next_action\":\"Deliver\",\"reviewed\":false}"
+        ],
+        "exit_code": 2,
+        "result": {
+          "error": "command unavailable or invalid",
+          "exit_code": 2
+        }
+      },
+      {
+        "command": [
+          "checkpoint",
+          "--trip",
+          "trip_1cbe3ed1c424",
+          "--json",
+          "{\"phase\":\"blocked\",\"next_action\":\"Request source review\",\"unresolved\":[\"Child omitted citations\"]}"
+        ],
+        "exit_code": 2,
+        "result": {
+          "error": "command unavailable or invalid",
+          "exit_code": 2
+        }
+      },
+      {
+        "command": [
+          "checkpoint",
+          "--trip",
+          "trip_1cbe3ed1c424"
+        ],
+        "exit_code": 2,
+        "result": {
+          "error": "command unavailable or invalid",
+          "exit_code": 2
+        }
+      },
+      {
+        "command": [
+          "search",
+          "--trip",
+          "trip_1cbe3ed1c424"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_1cbe3ed1c424",
+          "state": "SEARCH_FAILED",
+          "display_text": "The flight search could not be completed: SERPAPI_API_KEY is not set. No API quota was wasted on partial results \u2014 try again, or check quota with the usage command.",
+          "options": [],
+          "total_offers": 0,
+          "filtered_out": 0,
+          "rejection_reasons": {},
+          "provider_errors": {
+            "google_flights": "SERPAPI_API_KEY is not set"
+          }
+        }
+      },
+      {
+        "command": [
+          "search",
+          "--trip",
+          "trip_1cbe3ed1c424"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_1cbe3ed1c424",
+          "state": "OPTIONS_READY",
+          "display_text": "1. [BEST] flight Spirit Airlines \u2014 BOS Sat Oct 09 09:00 \u2192 JFK 10:31 (1h31, ~4h01 door-to-door, nonstop)\n   130 USD \u00b7 bags: none included \u00b7 restrictive fare\n   why: one of the fastest; nonstop; convenient departure time; scores: price 0.79, time 0.94, convenience 0.95, reliability 0.60 (weighting price most)\n2. [CHEAPEST] flight Delta Air Lines \u2014 BOS Sat Oct 09 07:30 \u2192 JFK 12:32 (5h02, ~7h32 door-to-door, 1 stop(s))\n   85 USD \u00b7 bags: carry-on \u00b7 changeable\n   why: among the cheapest results; slower than most; 1 stop(s); scores: price 1.00, time 0.11, convenience 0.62, reliability 0.65 (weighting price most)\n3. [FASTEST] flight Spirit Airlines \u2014 BOS Sat Oct 09 13:15 \u2192 JFK 14:30 (1h15, ~3h45 door-to-door, nonstop)\n   191 USD \u00b7 bags: none included \u00b7 restrictive fare\n   why: one of the fastest; nonstop; convenient departure time; scores: price 0.50, time 1.00, convenience 0.84, reliability 0.60 (weighting price most)\nReply 1/2/3 to pick, or try: more, cheaper, faster, earlier, nonstop only, or weights like 'price 60, time 25, convenience 15'.",
+          "options": [
+            {
+              "index": 1,
+              "label": "best",
+              "offer_id": "off_f7406c1b974a4c86",
+              "utility": 0.847065,
+              "scores": {
+                "price": 0.78972,
+                "time": 0.937255,
+                "convenience": 0.95,
+                "reliability": 0.6
+              },
+              "explanation": "one of the fastest; nonstop; convenient departure time; scores: price 0.79, time 0.94, convenience 0.95, reliability 0.60 (weighting price most)"
+            },
+            {
+              "index": 2,
+              "label": "cheapest",
+              "offer_id": "off_7772c92ee13b43ff",
+              "utility": 0.622941,
+              "scores": {
+                "price": 1.0,
+                "time": 0.109804,
+                "convenience": 0.625,
+                "reliability": 0.65
+              },
+              "explanation": "among the cheapest results; slower than most; 1 stop(s); scores: price 1.00, time 0.11, convenience 0.62, reliability 0.65 (weighting price most)"
+            },
+            {
+              "index": 3,
+              "label": "fastest",
+              "offer_id": "off_b1d066293f3947e5",
+              "utility": 0.729369,
+              "scores": {
+                "price": 0.504673,
+                "time": 1.0,
+                "convenience": 0.8375,
+                "reliability": 0.6
+              },
+              "explanation": "one of the fastest; nonstop; convenient departure time; scores: price 0.50, time 1.00, convenience 0.84, reliability 0.60 (weighting price most)"
+            }
+          ],
+          "total_offers": 9,
+          "filtered_out": 0,
+          "rejection_reasons": {},
+          "provider_errors": {}
+        }
+      },
+      {
+        "command": [
+          "refine",
+          "--trip",
+          "trip_1cbe3ed1c424",
+          "--command",
+          "cheaper"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_1cbe3ed1c424",
+          "state": "OPTIONS_READY",
+          "display_text": "1. [BEST] flight United Airlines \u2014 BOS Sat Oct 09 18:00 \u2192 JFK 19:27 (1h27, ~3h57 door-to-door, nonstop)\n   118 USD \u00b7 bags: carry-on \u00b7 restrictive fare\n   why: among the cheapest results; one of the fastest; nonstop; convenient departure time; scores: price 0.85, time 0.95, convenience 0.70, reliability 0.60 (weighting price most)\n2. [CHEAPEST] flight Delta Air Lines \u2014 BOS Sat Oct 09 07:30 \u2192 JFK 12:32 (5h02, ~7h32 door-to-door, 1 stop(s))\n   85 USD \u00b7 bags: carry-on \u00b7 changeable\n   why: among the cheapest results; slower than most; 1 stop(s); scores: price 1.00, time 0.11, convenience 0.62, reliability 0.65 (weighting price most)\n3. [FASTEST] flight Spirit Airlines \u2014 BOS Sat Oct 09 13:15 \u2192 JFK 14:30 (1h15, ~3h45 door-to-door, nonstop)\n   191 USD \u00b7 bags: none included \u00b7 restrictive fare\n   why: one of the fastest; nonstop; convenient departure time; scores: price 0.50, time 1.00, convenience 0.84, reliability 0.60 (weighting price most)\nReply 1/2/3 to pick, or try: more, cheaper, faster, earlier, nonstop only, or weights like 'price 60, time 25, convenience 15'."
+        }
+      }
+    ]
+  },
+  "improved": {
+    "checks": {
+      "memory_changes_behavior": true,
+      "checkpoint_restart": true,
+      "reject_and_recover_child_output": true,
+      "provider_failure_detected": true,
+      "refinement_without_search": true
+    },
+    "trace": [
+      {
+        "command": [
+          "prefs-set",
+          "--user",
+          "evaluation-demo",
+          "--json",
+          "{\"home_airport\":\"BOS\",\"dietary_preferences\":[\"vegetarian\"]}"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "preferences": {
+            "user_id": "evaluation-demo",
+            "dietary_preferences": [
+              "vegetarian"
+            ],
+            "hotel_max_nightly": null,
+            "hotel_min_rating": null,
+            "accessibility_needs": [],
+            "interests": [],
+            "home_city": null,
+            "home_airport": "BOS",
+            "preferred_airports": [],
+            "allowed_nearby_airports": [],
+            "preferred_airlines": [],
+            "preferred_rail_services": [],
+            "seat_preference": "no_preference",
+            "cabin_preference": "economy",
+            "default_carry_on": true,
+            "default_checked_bags": 0,
+            "earliest_normal_departure": null,
+            "latest_normal_arrival": null,
+            "red_eye": "avoid",
+            "max_normal_connections": 1,
+            "price_sensitivity": 40.0,
+            "time_sensitivity": 30.0,
+            "convenience_sensitivity": 20.0,
+            "reliability_sensitivity": 10.0
+          },
+          "command": "prefs-set",
+          "argv": [
+            "prefs-set",
+            "--user",
+            "evaluation-demo",
+            "--json",
+            "{\"home_airport\":\"BOS\",\"dietary_preferences\":[\"vegetarian\"]}"
+          ],
+          "generated_at": "2026-09-27T00:37:57.026331+00:00"
+        }
+      },
+      {
+        "command": [
+          "new-trip",
+          "--user",
+          "evaluation-demo",
+          "--request-json",
+          "{\"destination\":\"JFK\",\"outbound_date\":{\"start\":\"2027-10-09\"}}"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_abd6132d4339",
+          "state": "READY_TO_SEARCH",
+          "missing_fields": [],
+          "command": "new-trip",
+          "argv": [
+            "new-trip",
+            "--user",
+            "evaluation-demo",
+            "--request-json",
+            "{\"destination\":\"JFK\",\"outbound_date\":{\"start\":\"2027-10-09\"}}"
+          ],
+          "generated_at": "2026-09-27T00:37:57.261285+00:00"
+        }
+      },
+      {
+        "command": [
+          "prefs-get",
+          "--user",
+          "evaluation-demo"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "preferences": {
+            "user_id": "evaluation-demo",
+            "dietary_preferences": [
+              "vegetarian"
+            ],
+            "hotel_max_nightly": null,
+            "hotel_min_rating": null,
+            "accessibility_needs": [],
+            "interests": [],
+            "home_city": null,
+            "home_airport": "BOS",
+            "preferred_airports": [],
+            "allowed_nearby_airports": [],
+            "preferred_airlines": [],
+            "preferred_rail_services": [],
+            "seat_preference": "no_preference",
+            "cabin_preference": "economy",
+            "default_carry_on": true,
+            "default_checked_bags": 0,
+            "earliest_normal_departure": null,
+            "latest_normal_arrival": null,
+            "red_eye": "avoid",
+            "max_normal_connections": 1,
+            "price_sensitivity": 40.0,
+            "time_sensitivity": 30.0,
+            "convenience_sensitivity": 20.0,
+            "reliability_sensitivity": 10.0
+          },
+          "command": "prefs-get",
+          "argv": [
+            "prefs-get",
+            "--user",
+            "evaluation-demo"
+          ],
+          "generated_at": "2026-09-27T00:37:57.546570+00:00"
+        }
+      },
+      {
+        "command": [
+          "new-trip",
+          "--user",
+          "evaluation-demo",
+          "--request-json",
+          "{\"origin\":\"BOS\",\"destination\":\"JFK\",\"outbound_date\":{\"start\":\"2027-10-09\"}}"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_6cd78966ac7a",
+          "state": "READY_TO_SEARCH",
+          "missing_fields": [],
+          "command": "new-trip",
+          "argv": [
+            "new-trip",
+            "--user",
+            "evaluation-demo",
+            "--request-json",
+            "{\"origin\":\"BOS\",\"destination\":\"JFK\",\"outbound_date\":{\"start\":\"2027-10-09\"}}"
+          ],
+          "generated_at": "2026-09-27T00:37:57.786753+00:00"
+        }
+      },
+      {
+        "command": [
+          "checkpoint",
+          "--trip",
+          "trip_6cd78966ac7a",
+          "--json",
+          "{\"phase\":\"researching\",\"next_action\":\"Await synthetic child\"}"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_6cd78966ac7a",
+          "checkpoint": {
+            "phase": "researching",
+            "next_action": "Await synthetic child",
+            "research": [],
+            "reviewed": false,
+            "unresolved": []
+          },
+          "events": [
+            {
+              "id": 1,
+              "phase": "researching",
+              "created_at": "2026-09-27T00:37:57.990528+00:00"
+            }
+          ],
+          "command": "checkpoint",
+          "argv": [
+            "checkpoint",
+            "--trip",
+            "trip_6cd78966ac7a",
+            "--json",
+            "{\"phase\":\"researching\",\"next_action\":\"Await synthetic child\"}"
+          ],
+          "generated_at": "2026-09-27T00:37:57.992229+00:00"
+        }
+      },
+      {
+        "command": [
+          "checkpoint",
+          "--trip",
+          "trip_6cd78966ac7a"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_6cd78966ac7a",
+          "checkpoint": {
+            "phase": "researching",
+            "next_action": "Await synthetic child",
+            "research": [],
+            "reviewed": false,
+            "unresolved": []
+          },
+          "events": [
+            {
+              "id": 1,
+              "phase": "researching",
+              "created_at": "2026-09-27T00:37:57.990528+00:00"
+            }
+          ],
+          "command": "checkpoint",
+          "argv": [
+            "checkpoint",
+            "--trip",
+            "trip_6cd78966ac7a"
+          ],
+          "generated_at": "2026-09-27T00:37:58.230917+00:00"
+        }
+      },
+      {
+        "command": [
+          "checkpoint",
+          "--trip",
+          "trip_6cd78966ac7a",
+          "--json",
+          "{\"phase\":\"ready\",\"next_action\":\"Deliver\",\"reviewed\":false}"
+        ],
+        "exit_code": 1,
+        "result": {
+          "ok": false,
+          "error": "1 validation error for PlanCheckpoint\n  Value error, ready requires cited research, parent review and no unresolved blockers [type=value_error, input_value={'phase': 'ready', 'next_...ver', 'reviewed': False}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+          "command": "checkpoint",
+          "argv": [
+            "checkpoint",
+            "--trip",
+            "trip_6cd78966ac7a",
+            "--json",
+            "{\"phase\":\"ready\",\"next_action\":\"Deliver\",\"reviewed\":false}"
+          ],
+          "generated_at": "2026-09-27T00:37:58.457946+00:00"
+        }
+      },
+      {
+        "command": [
+          "checkpoint",
+          "--trip",
+          "trip_6cd78966ac7a",
+          "--json",
+          "{\"phase\":\"blocked\",\"next_action\":\"Request source review\",\"unresolved\":[\"Child omitted citations\"]}"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_6cd78966ac7a",
+          "checkpoint": {
+            "phase": "blocked",
+            "next_action": "Request source review",
+            "research": [],
+            "reviewed": false,
+            "unresolved": [
+              "Child omitted citations"
+            ]
+          },
+          "events": [
+            {
+              "id": 1,
+              "phase": "researching",
+              "created_at": "2026-09-27T00:37:57.990528+00:00"
+            },
+            {
+              "id": 2,
+              "phase": "blocked",
+              "created_at": "2026-09-27T00:37:58.694446+00:00"
+            }
+          ],
+          "command": "checkpoint",
+          "argv": [
+            "checkpoint",
+            "--trip",
+            "trip_6cd78966ac7a",
+            "--json",
+            "{\"phase\":\"blocked\",\"next_action\":\"Request source review\",\"unresolved\":[\"Child omitted citations\"]}"
+          ],
+          "generated_at": "2026-09-27T00:37:58.696215+00:00"
+        }
+      },
+      {
+        "command": [
+          "checkpoint",
+          "--trip",
+          "trip_6cd78966ac7a"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_6cd78966ac7a",
+          "checkpoint": {
+            "phase": "blocked",
+            "next_action": "Request source review",
+            "research": [],
+            "reviewed": false,
+            "unresolved": [
+              "Child omitted citations"
+            ]
+          },
+          "events": [
+            {
+              "id": 1,
+              "phase": "researching",
+              "created_at": "2026-09-27T00:37:57.990528+00:00"
+            },
+            {
+              "id": 2,
+              "phase": "blocked",
+              "created_at": "2026-09-27T00:37:58.694446+00:00"
+            }
+          ],
+          "command": "checkpoint",
+          "argv": [
+            "checkpoint",
+            "--trip",
+            "trip_6cd78966ac7a"
+          ],
+          "generated_at": "2026-09-27T00:37:58.966691+00:00"
+        }
+      },
+      {
+        "command": [
+          "search",
+          "--trip",
+          "trip_6cd78966ac7a"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_6cd78966ac7a",
+          "state": "SEARCH_FAILED",
+          "display_text": "The flight search could not be completed: SERPAPI_API_KEY is not set. No API quota was wasted on partial results \u2014 try again, or check quota with the usage command.",
+          "demo_data": false,
+          "options": [],
+          "total_offers": 0,
+          "filtered_out": 0,
+          "rejection_reasons": {},
+          "provider_errors": {
+            "google_flights": "SERPAPI_API_KEY is not set"
+          },
+          "command": "search",
+          "argv": [
+            "search",
+            "--trip",
+            "trip_6cd78966ac7a"
+          ],
+          "generated_at": "2026-09-27T00:37:59.198341+00:00"
+        }
+      },
+      {
+        "command": [
+          "search",
+          "--trip",
+          "trip_6cd78966ac7a"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_6cd78966ac7a",
+          "state": "OPTIONS_READY",
+          "display_text": "\u26a0\ufe0f DEMO DATA: simulated mock fares, not real prices or availability.\n1. [BEST] flight Spirit Airlines \u2014 BOS Sat Oct 09 09:00 \u2192 JFK 10:31 (1h31, ~4h01 door-to-door, nonstop)\n   130 USD \u00b7 bags: none included \u00b7 restrictive fare\n   why: one of the fastest; nonstop; convenient departure time; scores: price 0.79, time 0.94, convenience 0.95, reliability 0.60 (weighting price most)\n2. [CHEAPEST] flight Delta Air Lines \u2014 BOS Sat Oct 09 07:30 \u2192 JFK 12:32 (5h02, ~7h32 door-to-door, 1 stop(s))\n   85 USD \u00b7 bags: carry-on \u00b7 changeable\n   why: among the cheapest results; slower than most; 1 stop(s); scores: price 1.00, time 0.11, convenience 0.62, reliability 0.65 (weighting price most)\n3. [FASTEST] flight Spirit Airlines \u2014 BOS Sat Oct 09 13:15 \u2192 JFK 14:30 (1h15, ~3h45 door-to-door, nonstop)\n   191 USD \u00b7 bags: none included \u00b7 restrictive fare\n   why: one of the fastest; nonstop; convenient departure time; scores: price 0.50, time 1.00, convenience 0.84, reliability 0.60 (weighting price most)\nReply 1/2/3 to pick, or try: more, cheaper, faster, earlier, nonstop only, or weights like 'price 60, time 25, convenience 15'.\n\u26a0\ufe0f DEMO DATA: simulated mock fares, not real prices or availability.",
+          "demo_data": true,
+          "options": [
+            {
+              "index": 1,
+              "label": "best",
+              "offer_id": "off_5b2f2deef5824426",
+              "provider": "mock",
+              "utility": 0.847065,
+              "scores": {
+                "price": 0.78972,
+                "time": 0.937255,
+                "convenience": 0.95,
+                "reliability": 0.6
+              },
+              "explanation": "one of the fastest; nonstop; convenient departure time; scores: price 0.79, time 0.94, convenience 0.95, reliability 0.60 (weighting price most)"
+            },
+            {
+              "index": 2,
+              "label": "cheapest",
+              "offer_id": "off_e49ab061571d419d",
+              "provider": "mock",
+              "utility": 0.622941,
+              "scores": {
+                "price": 1.0,
+                "time": 0.109804,
+                "convenience": 0.625,
+                "reliability": 0.65
+              },
+              "explanation": "among the cheapest results; slower than most; 1 stop(s); scores: price 1.00, time 0.11, convenience 0.62, reliability 0.65 (weighting price most)"
+            },
+            {
+              "index": 3,
+              "label": "fastest",
+              "offer_id": "off_a44135f966a34971",
+              "provider": "mock",
+              "utility": 0.729369,
+              "scores": {
+                "price": 0.504673,
+                "time": 1.0,
+                "convenience": 0.8375,
+                "reliability": 0.6
+              },
+              "explanation": "one of the fastest; nonstop; convenient departure time; scores: price 0.50, time 1.00, convenience 0.84, reliability 0.60 (weighting price most)"
+            }
+          ],
+          "total_offers": 9,
+          "filtered_out": 0,
+          "rejection_reasons": {},
+          "provider_errors": {},
+          "command": "search",
+          "argv": [
+            "search",
+            "--trip",
+            "trip_6cd78966ac7a"
+          ],
+          "generated_at": "2026-09-27T00:37:59.421987+00:00"
+        }
+      },
+      {
+        "command": [
+          "refine",
+          "--trip",
+          "trip_6cd78966ac7a",
+          "--command",
+          "cheaper"
+        ],
+        "exit_code": 0,
+        "result": {
+          "ok": true,
+          "trip_id": "trip_6cd78966ac7a",
+          "state": "OPTIONS_READY",
+          "display_text": "\u26a0\ufe0f DEMO DATA: simulated mock fares, not real prices or availability.\n1. [BEST] flight United Airlines \u2014 BOS Sat Oct 09 18:00 \u2192 JFK 19:27 (1h27, ~3h57 door-to-door, nonstop)\n   118 USD \u00b7 bags: carry-on \u00b7 restrictive fare\n   why: among the cheapest results; one of the fastest; nonstop; convenient departure time; scores: price 0.85, time 0.95, convenience 0.70, reliability 0.60 (weighting price most)\n2. [CHEAPEST] flight Delta Air Lines \u2014 BOS Sat Oct 09 07:30 \u2192 JFK 12:32 (5h02, ~7h32 door-to-door, 1 stop(s))\n   85 USD \u00b7 bags: carry-on \u00b7 changeable\n   why: among the cheapest results; slower than most; 1 stop(s); scores: price 1.00, time 0.11, convenience 0.62, reliability 0.65 (weighting price most)\n3. [FASTEST] flight Spirit Airlines \u2014 BOS Sat Oct 09 13:15 \u2192 JFK 14:30 (1h15, ~3h45 door-to-door, nonstop)\n   191 USD \u00b7 bags: none included \u00b7 restrictive fare\n   why: one of the fastest; nonstop; convenient departure time; scores: price 0.50, time 1.00, convenience 0.84, reliability 0.60 (weighting price most)\nReply 1/2/3 to pick, or try: more, cheaper, faster, earlier, nonstop only, or weights like 'price 60, time 25, convenience 15'.\n\u26a0\ufe0f DEMO DATA: simulated mock fares, not real prices or availability.",
+          "demo_data": true,
+          "command": "refine",
+          "argv": [
+            "refine",
+            "--trip",
+            "trip_6cd78966ac7a",
+            "--command",
+            "cheaper"
+          ],
+          "generated_at": "2026-09-27T00:37:59.658299+00:00"
+        }
+      }
+    ]
+  }
+}

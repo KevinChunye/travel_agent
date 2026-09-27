@@ -4,7 +4,7 @@ Route ``/travel`` (and ``/``) shows active price watches, confirmed
 trips, and monthly SerpAPI usage. WhatsApp remains the primary
 interface; this is a read-only overview suitable for Maritime.
 
-Run: python -m src.cli dashboard [--port 8090]
+Run: python -m src.cli dashboard [--port 8090] [--host 127.0.0.1]
 """
 
 from __future__ import annotations
@@ -117,7 +117,12 @@ primary interface: WhatsApp</p>
 </body></html>"""
 
 
-def serve(repo: Repository, budget: SearchBudgetManager, port: int = 8090) -> None:
+def serve(
+    repo: Repository,
+    budget: SearchBudgetManager,
+    port: int = 8090,
+    host: str = "127.0.0.1",
+) -> None:
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):  # noqa: N802
             if self.path.rstrip("/") in ("", "/travel"):
@@ -134,6 +139,7 @@ def serve(repo: Repository, budget: SearchBudgetManager, port: int = 8090) -> No
         def log_message(self, fmt, *args):  # quiet
             pass
 
-    server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
-    print(f"travel dashboard on http://0.0.0.0:{port}/travel")
+    # Loopback by default: the page lists confirmation codes and trips.
+    server = ThreadingHTTPServer((host, port), Handler)
+    print(f"travel dashboard on http://{host}:{port}/travel")
     server.serve_forever()
